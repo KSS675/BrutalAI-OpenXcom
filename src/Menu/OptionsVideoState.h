@@ -17,6 +17,7 @@
  * You should have received a copy of the GNU General Public License
  * along with OpenXcom.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include <vector>
 #include "../Engine/State.h"
 #include "OptionsBaseState.h"
 #include <SDL.h>
@@ -90,6 +91,8 @@ public:
 	void updateGeoscapeScale(Action *action);
 	/// Update the resolution settings, we just resized the window.
 	void resize(int &, int &) override;
+	/// Update the game's resolution
+	void updateGameResolution();
 	/// Handles keypresses.
 	void handle(Action *action) override;
 	/// Unpresses Root Window Pos button.

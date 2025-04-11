@@ -22,6 +22,7 @@
 #include "../Engine/Font.h"
 #include "../Engine/Timer.h"
 #include "../Engine/Options.h"
+#include "../Engine/Language.h"
 #include "../fallthrough.h"
 
 namespace OpenXcom
@@ -39,6 +40,9 @@ TextEdit::TextEdit(State *state, int width, int height, int x, int y) : Interact
 	_blink(true), _modal(true), _drawBackground(true),
 	_char('A'), _caretPos(0), _textEditConstraint(TEC_NONE),
 	_change(0), _enter(0), _state(state)
+#ifdef __MOBILE__
+	, _isKeyboardActive(false)
+#endif
 {
 	_isFocused = false;
 	_text = new Text(width, height, 0, 0);
@@ -53,6 +57,10 @@ TextEdit::TextEdit(State *state, int width, int height, int x, int y) : Interact
  */
 TextEdit::~TextEdit()
 {
+	/* for good measure? */
+#ifdef __MOBILE__
+	_stopTextInput();
+#endif
 	delete _text;
 	delete _caret;
 	delete _timer;
@@ -98,6 +106,17 @@ void TextEdit::setFocus(bool focus, bool modal)
 			_timer->start();
 			if (_modal)
 				_state->setModal(this);
+#ifdef __MOBILE__
+			// Show virtual keyboard
+			/* SDL_Rect r;
+			r.x = getX();
+			r.y = getY();
+			r.w = getWidth();
+			r.h = getHeight();
+			SDL_SetTextInputRect(&r);
+			SDL_StartTextInput(); */
+			_startTextInput();
+#endif
 		}
 		else
 		{
@@ -106,9 +125,45 @@ void TextEdit::setFocus(bool focus, bool modal)
 			SDL_EnableKeyRepeat(0, SDL_DEFAULT_REPEAT_INTERVAL);
 			if (_modal)
 				_state->setModal(0);
+#ifdef __MOBILE__
+			/* SDL_StopTextInput(); */
+			_stopTextInput();
+#endif
 		}
 	}
 }
+
+#ifdef __MOBILE__
+/**
+ * Shows keyboard on devices without physical keyboard
+ */
+void TextEdit::_startTextInput()
+{
+	if (!SDL_IsScreenKeyboardShown(NULL))
+	{
+		SDL_Rect r;
+		r.x = getX();
+		r.y = getY();
+		r.w = getWidth();
+		r.h = getHeight();
+		SDL_SetTextInputRect(&r);
+		SDL_StartTextInput();
+		_isKeyboardActive = true;
+	}
+}
+/**
+ * Hides keyboard after text is entered
+ */
+
+void TextEdit::_stopTextInput()
+{
+	if (_isKeyboardActive)
+	{
+		SDL_StopTextInput();
+		_isKeyboardActive = false;
+	}
+}
+#endif
 
 /**
  * Changes the text edit to use the big-size font.
@@ -433,6 +488,10 @@ void TextEdit::mousePress(Action *action, State *state)
 {
 	if (action->getDetails()->button.button == SDL_BUTTON_LEFT)
 	{
+#ifdef __MOBILE__
+	/* Show keyboard */
+	_startTextInput();
+#endif
 		if (!_isFocused)
 		{
 			setFocus(true);
@@ -595,6 +654,33 @@ void TextEdit::onChange(ActionHandler handler)
 void TextEdit::onEnter(ActionHandler handler)
 {
 	_enter = handler;
+}
+
+void TextEdit::textInput(Action *action, State *state)
+{
+	// FIXME: This might not be consistent with current changes
+	std::string text(action->getDetails()->text.text);
+	UString wText = Unicode::convUtf8ToUtf32(text);
+	bool correct = true;
+	for(UString::iterator it = wText.begin(); it != wText.end(); ++it)
+	{
+		// FIXME: Probably not the correct check (text might be quite long?)
+		if (!isValidChar(*it) || exceedsMaxWidth(*it))
+		{
+			correct = false;
+			break;
+		}
+	}
+	if (correct)
+	{
+		_value += wText;
+		_caretPos = _value.length();
+	}
+	_redraw = true;
+	if (_change)
+	{
+		(state->*_change)(action);
+	}
 }
 
 }

@@ -22,6 +22,7 @@
 #include "../Engine/Options.h"
 #include "../Engine/Timer.h"
 #include "../fmath.h"
+#include "../Engine/CrossPlatform.h"
 
 namespace OpenXcom
 {

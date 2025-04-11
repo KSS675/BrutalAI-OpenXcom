@@ -28,6 +28,8 @@ namespace OpenXcom
 class Surface;
 class Action;
 
+class Renderer;
+
 /**
  * A display screen, handles rendering onto the game window.
  * In SDL a Screen is treated like a Surface, so this is just
@@ -54,6 +56,8 @@ private:
 	Surface::UniqueSurfacePtr _surface;
 	/// Sets the _flags and _bpp variables based on game options; needed in more than one place now
 	void makeVideoFlags();
+	int _prevWidth, _prevHeight;
+
 public:
 	static const int ORIGINAL_WIDTH;
 	static const int ORIGINAL_HEIGHT;
@@ -100,6 +104,10 @@ public:
 	static bool useOpenGL();
 	/// update the game scale as required.
 	static void updateScale(int type, int &width, int &height, bool change);
+	/// Get the scale for action() scaling (Android specific)
+	double getScale() const;
+	/// Get the pointer for our current window
+	SDL_Window *getWindow() const;
 };
 
 }

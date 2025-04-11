@@ -44,6 +44,9 @@ private:
 	Text *_txtTitle;
 	TextEdit *_edtName;
 	TextButton *_btnOk;
+#ifdef __MOBILE__
+	TextButton *_btnCancel;
+#endif
 	bool _first;
 	bool _fixedLocation;
 public:
@@ -55,6 +58,10 @@ public:
 	void btnOkClick(Action *action);
 	/// Handler for changing text on the Name edit.
 	void edtNameChange(Action *action);
+#ifdef __MOBILE__
+	/// Handler for cancel button
+	void btnCancelClick(Action *action);
+#endif
 };
 
 }

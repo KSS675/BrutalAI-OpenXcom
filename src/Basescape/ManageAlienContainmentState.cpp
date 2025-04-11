@@ -88,6 +88,8 @@ ManageAlienContainmentState::ManageAlienContainmentState(Base *base, int prisonT
 	_txtInterrogatedAliens = new Text(54, 18, 261, 32);
 	_lstAliens = new TextList(286, 112, 8, 53);
 
+	touchComponentsCreate(_txtTitle);
+
 	// Set palette
 	setInterface("manageContainment");
 
@@ -107,10 +109,14 @@ ManageAlienContainmentState::ManageAlienContainmentState(Base *base, int prisonT
 	add(_txtInterrogatedAliens, "text", "manageContainment");
 	add(_lstAliens, "list", "manageContainment");
 
+	touchComponentsAdd("button2", "manageContainment", _window);
+
 	centerAllSurfaces();
 
 	// Set up objects
 	setWindowBackground(_window, "manageContainment");
+
+	touchComponentsConfigure();
 
 	_btnOk->setText(trAlt(_threeButtons ? "STR_KILL_SELECTED" : "STR_REMOVE_SELECTED", _prisonType));
 	_btnOk->onMouseClick((ActionHandler)&ManageAlienContainmentState::btnOkClick);
@@ -164,6 +170,7 @@ ManageAlienContainmentState::ManageAlienContainmentState(Base *base, int prisonT
 	_lstAliens->onRightArrowRelease((ActionHandler)&ManageAlienContainmentState::lstItemsRightArrowRelease);
 	_lstAliens->onRightArrowClick((ActionHandler)&ManageAlienContainmentState::lstItemsRightArrowClick);
 	_lstAliens->onMousePress((ActionHandler)&ManageAlienContainmentState::lstItemsMousePress);
+	_lstAliens->onMouseWheel((ActionHandler)&ManageAlienContainmentState::lstItemsMouseWheel);
 
 	_timerInc = new Timer(250);
 	_timerInc->onTimer((StateHandler)&ManageAlienContainmentState::increase);
@@ -195,6 +202,8 @@ void ManageAlienContainmentState::init()
 	}
 
 	resetListAndTotals();
+
+	touchComponentsRefresh();
 }
 
 /**
@@ -535,6 +544,29 @@ void ManageAlienContainmentState::lstItemsMousePress(Action *action)
 }
 
 /**
+ * Handles the mouse-wheels on the arrow buttons.
+ * @param action Pointer to an action.
+ */
+void ManageAlienContainmentState::lstItemsMouseWheel(Action *action)
+{
+	_sel = _lstAliens->getSelectedRow();
+	const SDL_Event &ev(*action->getDetails());
+	if (ev.type == SDL_MOUSEWHEEL)
+	{
+		_timerInc->stop();
+		_timerDec->stop();
+		if (action->getAbsoluteXMouse() >= _lstAliens->getArrowsLeftEdge() &&
+			action->getAbsoluteXMouse() <= _lstAliens->getArrowsRightEdge())
+		{
+			if (ev.wheel.y > 0)
+				increaseByValue(Options::changeValueByMouseWheel);
+			else
+				decreaseByValue(Options::changeValueByMouseWheel);
+		}
+	}
+}
+
+/**
  * Gets the quantity of the currently selected alien on the base.
  * @return Quantity of selected alien on the base.
  */
@@ -550,7 +582,7 @@ void ManageAlienContainmentState::increase()
 {
 	_timerDec->setInterval(50);
 	_timerInc->setInterval(50);
-	increaseByValue(1);
+	increaseByValue(_game->getScrollStep());
 }
 
 /**
@@ -575,7 +607,7 @@ void ManageAlienContainmentState::decrease()
 {
 	_timerInc->setInterval(50);
 	_timerDec->setInterval(50);
-	decreaseByValue(1);
+	decreaseByValue(_game->getScrollStep());
 }
 
 /**

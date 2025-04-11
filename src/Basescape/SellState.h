@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU General Public License
  * along with OpenXcom.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "../Engine/State.h"
+#include "../Engine/TouchState.h"
 #include "../Savegame/Transfer.h"
 #include "../Menu/OptionsBaseState.h"
 #include <vector>
@@ -41,7 +41,7 @@ class RuleItem;
  * Sell/Sack screen that lets the player sell
  * any items in a particular base.
  */
-class SellState : public State
+class SellState : public TouchState
 {
 private:
 	Base *_base;
@@ -112,6 +112,8 @@ public:
 	void lstItemsRightArrowClick(Action *action);
 	/// Handler for pressing-down a mouse-button in the list.
 	void lstItemsMousePress(Action *action);
+	/// Handler for mouse-wheel events
+	void lstItemsMouseWheel(Action *action);
 	/// Increases the quantity of an item by one.
 	void increase();
 	/// Decreases the quantity of an item by one.

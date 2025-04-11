@@ -24,6 +24,11 @@
 namespace OpenXcom
 {
 
+OptionInfo::OptionInfo()
+{
+	//do nothing
+}
+
 /**
  * Creates info for a boolean option.
  * @param owner Owner ID.
@@ -103,7 +108,7 @@ void OptionInfo::load(const YAML::YamlNodeReader& reader) const
 		*(_ref.i) = reader[ryml::to_csubstr(_id)].readVal(_def.i);
 		break;
 	case OPTION_KEY:
-		*(_ref.k) = (SDLKey)reader[ryml::to_csubstr(_id)].readVal((int)_def.k);
+		*(_ref.k) = (SDL_Keycode)reader[ryml::to_csubstr(_id)].readVal((int)_def.k);
 		if (*(_ref.k) == SDLK_LSHIFT || *(_ref.k) == SDLK_LALT || *(_ref.k) == SDLK_LCTRL ||
 			*(_ref.k) == SDLK_RSHIFT || *(_ref.k) == SDLK_RALT || *(_ref.k) == SDLK_RCTRL)
 		{
@@ -150,7 +155,7 @@ void OptionInfo::load(const std::map<std::string, std::string> &map, bool makeLo
 		case OPTION_KEY:
 			ss << std::dec << value;
 			ss >> std::dec >> i;
-			*(_ref.k) = (SDLKey)i;
+			*(_ref.k) = (SDL_Keycode)i;
 			break;
 		case OPTION_STRING:
 			*(_ref.s) = value;
@@ -237,7 +242,7 @@ int *OptionInfo::asInt() const
  * or throws an exception if it's not a key.
  * @return Pointer to the option.
  */
-SDLKey *OptionInfo::asKey() const
+SDL_Keycode *OptionInfo::asKey() const
 {
 	if (_type != OPTION_KEY)
 	{

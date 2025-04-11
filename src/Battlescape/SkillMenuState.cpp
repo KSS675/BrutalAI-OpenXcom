@@ -66,7 +66,7 @@ SkillMenuState::SkillMenuState(BattleAction *action, int x, int y) : ActionMenuS
 	// Build up the popup menu
 	int id = 0;
 
-	std::vector<SDLKey> hotkeys = {
+	std::vector<SDL_Keycode> hotkeys = {
 		Options::keyBattleActionItem5,
 		Options::keyBattleActionItem4,
 		Options::keyBattleActionItem3,
@@ -139,7 +139,7 @@ bool SkillMenuState::soldierHasAllRequiredBonusesForSkill(Soldier *soldier, cons
  * @param name Action description.
  * @param id Pointer to the new item ID.
  */
-void SkillMenuState::addItem(const RuleSkill* skill, int *id, SDLKey key)
+void SkillMenuState::addItem(const RuleSkill* skill, int *id, SDL_Keycode key)
 {
 	BattleActionType ba = skill->getTargetMode();
 

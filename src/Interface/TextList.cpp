@@ -1189,6 +1189,29 @@ void TextList::think()
  */
 void TextList::mousePress(Action *action, State *state)
 {
+	if (_dragScrollable)
+	{
+		_accumulatedDelta = 0;
+		_overThreshold = false;
+	}
+	if (_selectable)
+	{
+		if (_selRow < _rows.size())
+		{
+			InteractiveSurface::mousePress(action, state);
+		}
+	}
+	else
+	{
+		InteractiveSurface::mousePress(action, state);
+	}
+}
+
+/**
+ * Handles mousewheel scrolling
+ */
+void TextList::mouseWheel(Action *action, State *state)
+{
 	bool allowScroll = true;
 	if (Options::changeValueByMouseWheel != 0)
 	{
@@ -1223,6 +1246,7 @@ void TextList::mousePress(Action *action, State *state)
  */
 void TextList::mouseRelease(Action *action, State *state)
 {
+	_accumulatedDelta = 0;
 	if (_selectable)
 	{
 		if (_selRow < _rows.size())
@@ -1243,6 +1267,13 @@ void TextList::mouseRelease(Action *action, State *state)
  */
 void TextList::mouseClick(Action *action, State *state)
 {
+	if (_overThreshold && _dragScrollable)
+	{
+		// End scrolling action.
+		_overThreshold = false;
+		_accumulatedDelta = 0;
+		return;
+	}
 	if (_selectable)
 	{
 		if (_selRow < _rows.size())
@@ -1268,6 +1299,29 @@ void TextList::mouseClick(Action *action, State *state)
  */
 void TextList::mouseOver(Action *action, State *state)
 {
+	if (_scrolling && _dragScrollable)
+	{
+		const int threshold = (_font->getHeight() + _font->getSpacing()) * action->getYScale();
+		const SDL_Event *ev = action->getDetails();
+		if (ev->type == SDL_MOUSEMOTION && ev->motion.state != 0)
+		{
+			// Only accumulate delta while mouse button is pressed
+			_accumulatedDelta += action->getDetails()->motion.yrel;
+		}
+		if (std::abs(_accumulatedDelta) >= threshold)
+		{
+			_overThreshold = action->getDetails()->motion.state != 0;
+		}
+		if (_overThreshold && action->getDetails()->motion.state)
+		{
+			if (std::abs(_accumulatedDelta) >= threshold)
+			{
+				if (_accumulatedDelta < 0) { scrollDown(false, false);      } // Finger moving up
+				else					   { scrollUp(false, false);        } // Finger moving down
+				_accumulatedDelta = 0;
+			}
+		}
+	}
 	if (_selectable)
 	{
 		int rowHeight = _font->getHeight() + _font->getSpacing(); //theoretical line height
@@ -1402,4 +1456,21 @@ void TextList::setIgnoreSeparators(bool ignoreSeparators)
 	_ignoreSeparators = ignoreSeparators;
 }
 
+/**
+*  Sets drag-scrolling option, taking into account the option to actually drag-scroll.
+*  @param scrollable Desired drag-scrolling state.
+*/
+void TextList::setDragScrollable(bool scrollable)
+{
+	_dragScrollable = scrollable && Options::listDragScroll;
+}
+
+/**
+*  Checks if the TextList supports drag-scrolling.
+*  @return true if the list is drag-scrollable.
+*/
+bool TextList::isDragScrollable()
+{
+	return _dragScrollable;
+}
 }

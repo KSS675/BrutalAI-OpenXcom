@@ -187,7 +187,9 @@ void CraftsState::lstCraftsClick(Action *action)
 			// warp mouse
 			if (row != _lstCrafts->getVisibleRows() - 1 + _lstCrafts->getScroll())
 			{
+#ifndef __MOBILE__
 				SDL_WarpMouse(action->getLeftBlackBand() + action->getXMouse(), action->getTopBlackBand() + action->getYMouse() + static_cast<Uint16>(8 * action->getYScale()));
+#endif
 			}
 			else
 			{
@@ -205,7 +207,9 @@ void CraftsState::lstCraftsClick(Action *action)
 			// warp mouse
 			if (row != _lstCrafts->getScroll())
 			{
-				SDL_WarpMouse(action->getLeftBlackBand() + action->getXMouse(), action->getTopBlackBand() + action->getYMouse() - static_cast<Uint16>(8 * action->getYScale()));
+#ifndef __MOBILE__
+				SDL_WarpMouseInWindow(NULL, (action->getLeftBlackBand() + action->getXMouse()), (action->getTopBlackBand() + action->getYMouse() - static_cast<Uint16>(8 * action->getYScale())));
+#endif
 			}
 			else
 			{

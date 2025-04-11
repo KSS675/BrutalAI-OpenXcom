@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU General Public License
  * along with OpenXcom.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "../Engine/State.h"
+#include "../Engine/TouchState.h"
 #include "../Menu/OptionsBaseState.h"
 #include <vector>
 #include <string>
@@ -36,7 +36,7 @@ class Base;
  * ManageAlienContainment screen that lets the player manage
  * alien numbers in a particular base.
  */
-class ManageAlienContainmentState : public State
+class ManageAlienContainmentState : public TouchState
 {
 private:
 	Base *_base;
@@ -95,6 +95,8 @@ public:
 	void lstItemsRightArrowClick(Action *action);
 	/// Handler for pressing-down a mouse-button in the list.
 	void lstItemsMousePress(Action *action);
+	/// Handler for mousewheeling over the list.
+	void lstItemsMouseWheel(Action *action);
 	/// Increases the quantity of an alien by one.
 	void increase();
 	/// Increases the quantity of an alien by the given value.

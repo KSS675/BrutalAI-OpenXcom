@@ -43,6 +43,9 @@
 #include "OptionsConfirmState.h"
 #include "StartState.h"
 
+#include "OptionsSystemState.h"
+#include "../Engine/CrossPlatform.h"
+
 namespace OpenXcom
 {
 
@@ -58,7 +61,12 @@ OptionsBaseState::OptionsBaseState(OptionsOrigin origin) : _origin(origin), _gro
 
 	_btnVideo = new TextButton(80, 16, 8, 8);
 	_btnAudio = new TextButton(80, 16, 8, 28);
+#if defined (__MOBILE__) || defined (__PSEUDO_ANDROID__)
+	_btnSystem = new TextButton(80, 16, 8, 48);
+#else
 	_btnControls = new TextButton(80, 16, 8, 48);
+#endif
+	// TODO: Android
 	_btnGeoscape = new TextButton(80, 16, 8, 68);
 	_btnBattlescape = new TextButton(80, 16, 8, 88);
 	_btnAdvanced = new TextButton(80, 16, 8, 108);
@@ -77,7 +85,11 @@ OptionsBaseState::OptionsBaseState(OptionsOrigin origin) : _origin(origin), _gro
 
 	add(_btnVideo, "button", "optionsMenu");
 	add(_btnAudio, "button", "optionsMenu");
+#if defined(__MOBILE__) || defined (__PSEUDO_ANDROID__)
+	add(_btnSystem, "button", "optionsMenu");
+#else
 	add(_btnControls, "button", "optionsMenu");
+#endif
 	add(_btnGeoscape, "button", "optionsMenu");
 	add(_btnBattlescape, "button", "optionsMenu");
 	add(_btnAdvanced, "button", "optionsMenu");
@@ -97,10 +109,13 @@ OptionsBaseState::OptionsBaseState(OptionsOrigin origin) : _origin(origin), _gro
 
 	_btnAudio->setText(tr("STR_AUDIO"));
 	_btnAudio->onMousePress((ActionHandler)&OptionsBaseState::btnGroupPress, SDL_BUTTON_LEFT);
-
+#if defined(__MOBILE__) || defined(__PSEUDO_ANDROID__)
+	_btnSystem->setText(tr("STR_SYSTEM"));
+	_btnSystem->onMousePress((ActionHandler)&OptionsBaseState::btnGroupPress, SDL_BUTTON_LEFT);
+#else
 	_btnControls->setText(tr("STR_CONTROLS"));
 	_btnControls->onMousePress((ActionHandler)&OptionsBaseState::btnGroupPress, SDL_BUTTON_LEFT);
-
+#endif
 	_btnGeoscape->setText(tr("STR_GEOSCAPE_UC"));
 	_btnGeoscape->onMousePress((ActionHandler)&OptionsBaseState::btnGroupPress, SDL_BUTTON_LEFT);
 
@@ -189,7 +204,11 @@ void OptionsBaseState::setCategory(TextButton *button)
 	_group = button;
 	_btnVideo->setGroup(&_group);
 	_btnAudio->setGroup(&_group);
+#if defined(__MOBILE__) || defined(__PSEUDO_ANDROID__)
+	_btnSystem->setGroup(&_group);
+#else
 	_btnControls->setGroup(&_group);
+#endif
 	_btnGeoscape->setGroup(&_group);
 	_btnBattlescape->setGroup(&_group);
 	_btnAdvanced->setGroup(&_group);
@@ -283,10 +302,17 @@ void OptionsBaseState::btnGroupPress(Action *action)
 				_game->pushState(new OptionsNoAudioState(_origin));
 			}
 		}
+#if defined(__MOBILE__) || defined(__PSEUDO_ANDROID__)
+		else if (sender == _btnSystem)
+		{
+			_game->pushState(new OptionsSystemState(_origin));
+		}
+#else
 		else if (sender == _btnControls)
 		{
 			_game->pushState(new OptionsControlsState(_origin));
 		}
+#endif
 		else if (sender == _btnGeoscape)
 		{
 			_game->pushState(new OptionsGeoscapeState(_origin));

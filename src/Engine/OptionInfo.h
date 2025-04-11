@@ -35,12 +35,15 @@ enum OptionOwner { OPTION_OXC, OPTION_OXCE, OPTION_OTHER, OPTION_OWNER_MAX };
  */
 class OptionInfo
 {
-private:
+protected:
+	/// Default ctor, so we can easily inherit
+	OptionInfo();
+
 	std::string _id, _desc, _cat;
 	OptionType _type;
 	OptionOwner _owner;
-	union { bool *b; int *i; std::string *s; SDLKey *k; } _ref;
-	union { bool b; int i; const char *s; SDLKey k; } _def; // can't put strings in unions
+	union { bool *b; int *i; std::string *s; SDL_Keycode *k; } _ref;
+	union { bool b; int i; const char *s; SDL_Keycode k; } _def; // can't put strings in unions
 public:
 	/// Creates a bool option.
 	OptionInfo(OptionOwner owner, const std::string &id, bool *option, bool def, const std::string &desc = "", const std::string &cat = "");
@@ -57,7 +60,7 @@ public:
 	/// Gets a string option pointer.
 	std::string *asString() const;
 	/// Gets a key option pointer.
-	SDLKey *asKey() const;
+	SDL_Keycode *asKey() const;
 	/// Loads the option from YAML.
 	void load(const YAML::YamlNodeReader& reader) const;
 	/// Loads the option from a map.
@@ -76,6 +79,13 @@ public:
 	const std::string& description() const { return _desc; }
 	/// Gets the option category.
 	const std::string& category() const { return _cat; }
+};
+
+class KeyOptionInfo : public OptionInfo
+{
+public:
+	/// Creates a key option.
+	KeyOptionInfo(OptionOwner owner, const std::string& id, SDL_Keycode* option, SDL_Keycode def, const std::string& desc = "", const std::string& cat = "");
 };
 
 }

@@ -140,6 +140,7 @@ ModListState::ModListState() : _curMasterIdx(0)
 	_lstMods->onMouseIn((ActionHandler)&ModListState::txtTooltipIn);
 	_lstMods->onMouseOut((ActionHandler)&ModListState::txtTooltipOut);
 	_lstMods->onMouseOver((ActionHandler)&ModListState::lstModsHover);
+	_lstMods->onMouseWheel((ActionHandler)&ModListState::lstModsMouseWheel);
 	lstModsRefresh(0);
 
 	_btnOk->setText(tr("STR_OK"));

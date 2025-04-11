@@ -9,15 +9,20 @@ OPT bool fullscreen, asyncBlit, playIntro, useScaleFilter, useHQXFilter, useXBRZ
 	autosave, allowResize, borderless, debug, debugUi, fpsCounter, newSeedOnLoad, keepAspectRatio, nonSquarePixelRatio,
 	cursorInBlackBandsInFullscreen, cursorInBlackBandsInWindow, cursorInBlackBandsInBorderlessWindow, maximizeInfoScreens, musicAlwaysLoop, StereoSound, verboseLogging, soldierDiaries, touchEnabled,
 	rootWindowedMode, lazyLoadResources, backgroundMute, showCraftHangar;
+// SDL2 scalers
+OPT bool useNearestScaler, useLinearScaler, useAnisotropicScaler;
+OPT bool useSoftwareRenderer;
+
+
 OPT std::string language, useOpenGLShader;
 OPT KeyboardType keyboardMode;
 OPT SaveSort saveOrder;
 OPT MusicFormat preferredMusic;
 OPT SoundFormat preferredSound;
 OPT VideoFormat preferredVideo;
-OPT SDL_GrabMode captureMouse;
+OPT bool captureMouse;
 OPT TextWrapping wordwrap;
-OPT SDLKey keyOk, keyCancel, keyScreenshot, keyFps, keyQuickLoad, keyQuickSave;
+OPT SDL_Keycode keyOk, keyCancel, keyScreenshot, keyFps, keyQuickLoad, keyQuickSave;
 
 // Geoscape options
 OPT int geoClockSpeed, dogfightSpeed, geoScrollSpeed, geoDragScrollButton, geoscapeScale;
@@ -25,7 +30,9 @@ OPT bool includePrimeStateInSavedLayout, anytimePsiTraining, weaponSelfDestructi
 	globeSurfaceCache, globeSeasons, globeDetail, globeRadarLines, globeFlightPaths, globeAllRadarsOnBaseBuild,
 	storageLimitsEnforced, canSellLiveAliens, canTransferCraftsWhileAirborne, customInitialBase, aggressiveRetaliation, geoDragScrollInvert,
 	allowBuildingQueue, showFundsOnGeoscape, psiStrengthEval, allowPsiStrengthImprovement, fieldPromotions, meetingPoint;
-OPT SDLKey keyGeoLeft, keyGeoRight, keyGeoUp, keyGeoDown, keyGeoZoomIn, keyGeoZoomOut, keyGeoSpeed1, keyGeoSpeed2, keyGeoSpeed3, keyGeoSpeed4, keyGeoSpeed5, keyGeoSpeed6,
+// Added for Android
+OPT bool dragSoldierReorder;
+OPT SDL_Keycode keyGeoLeft, keyGeoRight, keyGeoUp, keyGeoDown, keyGeoZoomIn, keyGeoZoomOut, keyGeoSpeed1, keyGeoSpeed2, keyGeoSpeed3, keyGeoSpeed4, keyGeoSpeed5, keyGeoSpeed6,
 	keyGeoIntercept, keyGeoBases, keyGeoGraphs, keyGeoUfopedia, keyGeoOptions, keyGeoFunding, keyGeoToggleDetail, keyGeoToggleRadar,
 	keyBaseSelect1, keyBaseSelect2, keyBaseSelect3, keyBaseSelect4, keyBaseSelect5, keyBaseSelect6, keyBaseSelect7, keyBaseSelect8;
 OPT SDLKey keyAIList;	
@@ -37,7 +44,7 @@ OPT int battleRealisticShotDispersion, battleRealisticCoverEfficiency, battleScr
 OPT bool traceAI, battleInstantGrenade, battleNotifyDeath, battleTooltips, battleHairBleach, battleAutoEnd,
 	strafe, forceFire, showMoreStatsInInventoryView, allowPsionicCapture, skipNextTurnScreen, disableAutoEquip, battleDragScrollInvert,
 	battleUFOExtenderAccuracy, battleRealisticAccuracy, battleRealisticImprovedSnap, battleRealisticImprovedAimed, battleRealisticImprovedLof, battleRealisticDisplayRolls, battleAltGrenades, battleConfirmFireMode, battleSmoothCamera, noAlienPanicMessages, alienBleeding, instantPrime, strictBlockedChecking, updateTurnsSinceSeenByClue;
-OPT SDLKey keyBattleLeft, keyBattleRight, keyBattleUp, keyBattleDown, keyBattleLevelUp, keyBattleLevelDown, keyBattleCenterUnit, keyBattlePrevUnit, keyBattleNextUnit, keyBattleDeselectUnit,
+OPT SDL_Keycode keyBattleLeft, keyBattleRight, keyBattleUp, keyBattleDown, keyBattleLevelUp, keyBattleLevelDown, keyBattleCenterUnit, keyBattlePrevUnit, keyBattleNextUnit, keyBattleDeselectUnit,
 keyBattleUseLeftHand, keyBattleUseRightHand, keyBattleInventory, keyBattleMap, keyBattleOptions, keyBattleEndTurn, keyBattleAbort, keyBattleStats, keyBattleKneel,
 keyBattleReserveKneel, keyBattleReload, keyBattlePersonalLighting, keyBattleReserveNone, keyBattleReserveSnap, keyBattleReserveAimed, keyBattleReserveAuto,
 keyBattleCenterEnemy1, keyBattleCenterEnemy2, keyBattleCenterEnemy3, keyBattleCenterEnemy4, keyBattleCenterEnemy5, keyBattleCenterEnemy6, keyBattleCenterEnemy7, keyBattleCenterEnemy8,
@@ -50,7 +57,7 @@ OPT bool autoCombatEachCombat, autoCombatEachTurn, autoCombatControlPerUnit;
 OPT bool autoCombatDefaultSoldier, autoCombatDefaultHWP, autoCombatDefaultMindControl, autoCombatDefaultRemain;
 
 // Extra hotkeys (OXCE)
-OPT SDLKey keyGeoDailyPilotExperience, keyGeoUfoTracker, keyGeoTechTreeViewer, keyGeoGlobalResearch, keyGeoGlobalProduction, keyGeoGlobalAlienContainment,
+OPT SDL_Keycode keyGeoDailyPilotExperience, keyGeoUfoTracker, keyGeoTechTreeViewer, keyGeoGlobalResearch, keyGeoGlobalProduction, keyGeoGlobalAlienContainment,
 	keyGraphsZoomIn, keyGraphsZoomOut,
 	keyToggleQuickSearch, keyInstaSave,
 	keyCraftLoadoutSave, keyCraftLoadoutLoad,
@@ -68,7 +75,7 @@ OPT SDLKey keyGeoDailyPilotExperience, keyGeoUfoTracker, keyGeoTechTreeViewer, k
 	keyBattleUseSpecial,
 	keyBattleActionItem1, keyBattleActionItem2, keyBattleActionItem3, keyBattleActionItem4, keyBattleActionItem5,
 	keyNightVisionToggle, keyNightVisionHold, keySelectMusicTrack, keyToggleAutoPlay;
-OPT SDLKey keyBasescapeBuildNewBase, keyBasescapeBaseInfo, keyBasescapeSoldiers, keyBasescapeCrafts,
+OPT SDL_Keycode keyBasescapeBuildNewBase, keyBasescapeBaseInfo, keyBasescapeSoldiers, keyBasescapeCrafts,
 	keyBasescapeFacilities, keyBasescapeResearch, keyBasescapeManufacture, keyBasescapeTransfer,
 	keyBasescapePurchase, keyBasescapeSell;
 
@@ -150,7 +157,9 @@ OPT bool oxceGeoGoToNearestBase;
 OPT bool oxceGeoSortCraftByDistanceToTarget;
 
 OPT int oxceBaseInfoDefenseScaleMultiplier;
+OPT bool oxceBaseSoldierTransformationShowOnlyEligible;
 OPT bool oxceBaseManufactureInfinityButton;
+OPT bool oxceBaseTouchButtons;
 
 OPT bool oxceDisableAlienInventory;
 OPT bool oxceDisableHitLog;
@@ -168,12 +177,24 @@ OPT bool oxceSwapDontReselectActions;
 OPT bool oxceEnableUnitResponseSounds;
 OPT int oxceHiddenMovementBackgroundChangeFrequency;
 OPT bool oxceInventoryShowUnitSlot;
+OPT bool oxceInventorySplitScrollButton;
+OPT bool oxceInventoryDropItemOverPaperdoll;
 
 OPT int oxceMaxEquipmentLayoutTemplates;
+
+// System-specific options
+OPT bool swipeToTurn, holdToTurn;
+OPT SystemUIStyle systemUI;
+OPT bool logToFile, logToSystem, logTouch, fakeEvents, forceGLMode;
+OPT int mouseMode;
+OPT bool listDragScroll;
+OPT int longPressDuration;
+OPT bool showCursor;
 
 // Flags and other stuff that don't need OptionInfo's.
 OPT bool mute, reload, newOpenGL, newScaleFilter, newHQXFilter, newXBRZFilter, newRootWindowedMode, newFullscreen, newAllowResize, newBorderless;
 OPT int newDisplayWidth, newDisplayHeight, newBattlescapeScale, newGeoscapeScale, newWindowedModePositionX, newWindowedModePositionY;
+OPT bool newNearestScaler, newLinearScaler, newAnisotropicScaler;
 OPT std::string newOpenGLShader;
 OPT std::vector< std::pair<std::string, bool> > mods; // ordered list of available mods (lowest priority to highest) and whether they are active
 OPT SoundFormat currentSound;
@@ -188,14 +209,15 @@ OPT bool baseDefenseProbability;
 OPT bool baseDetectionProbability;
 
 // prime grenades
-OPT SDLKey keyReadyLightGrenade;
-OPT SDLKey keyReadyHeavyGrenade;
-OPT SDLKey keyReadyProximityGrenade;
-OPT SDLKey keyReadySmokeGrenade;
-OPT SDLKey keyReadyStunGrenade;
-OPT SDLKey keyReadyFlare;
-OPT SDLKey keyReadyScanner;
-OPT SDLKey keyReadyMedikit;
-OPT SDLKey keyClearLeftHand;
+OPT SDL_Keycode keyReadyLightGrenade;
+OPT SDL_Keycode keyReadyHeavyGrenade;
+OPT SDL_Keycode keyReadyProximityGrenade;
+OPT SDL_Keycode keyReadySmokeGrenade;
+OPT SDL_Keycode keyReadyStunGrenade;
+OPT SDL_Keycode keyReadyFlare;
+OPT SDL_Keycode keyReadyScanner;
+OPT SDL_Keycode keyReadyMedikit;
+OPT SDL_Keycode keyClearLeftHand;
+OPT std::string systemLocale;
 
 OPT int battleXcomSpeedOrig;

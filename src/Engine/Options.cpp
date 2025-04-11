@@ -69,6 +69,9 @@ void create()
 	//					OXC - OpenXcom
 	////////////////////////////////////////////////////////////
 
+	createOptionsAndroid();
+	createAdvancedOptionsAndroid();
+
 	createOptionsOXC();
 	createAdvancedOptionsOXC();
 	createControlsOXC();
@@ -278,82 +281,51 @@ void createAdvancedOptionsOXC()
 void createControlsOXC()
 {
 	// controls
-	_info.push_back(OptionInfo(OPTION_OXC, "keyOk", &keyOk, SDLK_RETURN, "STR_OK", "STR_GENERAL"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyCancel", &keyCancel, SDLK_ESCAPE, "STR_CANCEL", "STR_GENERAL"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyScreenshot", &keyScreenshot, SDLK_F12, "STR_SCREENSHOT", "STR_GENERAL"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyFps", &keyFps, SDLK_F7, "STR_FPS_COUNTER", "STR_GENERAL"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyQuickSave", &keyQuickSave, SDLK_F5, "STR_QUICK_SAVE", "STR_GENERAL"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyQuickLoad", &keyQuickLoad, SDLK_F9, "STR_QUICK_LOAD", "STR_GENERAL"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyGeoLeft", &keyGeoLeft, SDLK_LEFT, "STR_ROTATE_LEFT", "STR_GEOSCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyGeoRight", &keyGeoRight, SDLK_RIGHT, "STR_ROTATE_RIGHT", "STR_GEOSCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyGeoUp", &keyGeoUp, SDLK_UP, "STR_ROTATE_UP", "STR_GEOSCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyGeoDown", &keyGeoDown, SDLK_DOWN, "STR_ROTATE_DOWN", "STR_GEOSCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyGeoZoomIn", &keyGeoZoomIn, SDLK_PLUS, "STR_ZOOM_IN", "STR_GEOSCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyGeoZoomOut", &keyGeoZoomOut, SDLK_MINUS, "STR_ZOOM_OUT", "STR_GEOSCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyGeoSpeed1", &keyGeoSpeed1, SDLK_1, "STR_5_SECONDS", "STR_GEOSCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyGeoSpeed2", &keyGeoSpeed2, SDLK_2, "STR_1_MINUTE", "STR_GEOSCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyGeoSpeed3", &keyGeoSpeed3, SDLK_3, "STR_5_MINUTES", "STR_GEOSCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyGeoSpeed4", &keyGeoSpeed4, SDLK_4, "STR_30_MINUTES", "STR_GEOSCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyGeoSpeed5", &keyGeoSpeed5, SDLK_5, "STR_1_HOUR", "STR_GEOSCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyGeoSpeed6", &keyGeoSpeed6, SDLK_6, "STR_1_DAY", "STR_GEOSCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyGeoIntercept", &keyGeoIntercept, SDLK_i, "STR_INTERCEPT", "STR_GEOSCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyGeoBases", &keyGeoBases, SDLK_b, "STR_BASES", "STR_GEOSCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyGeoGraphs", &keyGeoGraphs, SDLK_g, "STR_GRAPHS", "STR_GEOSCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyGeoUfopedia", &keyGeoUfopedia, SDLK_u, "STR_UFOPAEDIA_UC", "STR_GEOSCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyGeoOptions", &keyGeoOptions, SDLK_ESCAPE, "STR_OPTIONS_UC", "STR_GEOSCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyGeoFunding", &keyGeoFunding, SDLK_f, "STR_FUNDING_UC", "STR_GEOSCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyGeoToggleDetail", &keyGeoToggleDetail, SDLK_TAB, "STR_TOGGLE_COUNTRY_DETAIL", "STR_GEOSCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyGeoToggleRadar", &keyGeoToggleRadar, SDLK_r, "STR_TOGGLE_RADAR_RANGES", "STR_GEOSCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBaseSelect1", &keyBaseSelect1, SDLK_1, "STR_SELECT_BASE_1", "STR_GEOSCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBaseSelect2", &keyBaseSelect2, SDLK_2, "STR_SELECT_BASE_2", "STR_GEOSCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBaseSelect3", &keyBaseSelect3, SDLK_3, "STR_SELECT_BASE_3", "STR_GEOSCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBaseSelect4", &keyBaseSelect4, SDLK_4, "STR_SELECT_BASE_4", "STR_GEOSCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBaseSelect5", &keyBaseSelect5, SDLK_5, "STR_SELECT_BASE_5", "STR_GEOSCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBaseSelect6", &keyBaseSelect6, SDLK_6, "STR_SELECT_BASE_6", "STR_GEOSCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBaseSelect7", &keyBaseSelect7, SDLK_7, "STR_SELECT_BASE_7", "STR_GEOSCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBaseSelect8", &keyBaseSelect8, SDLK_8, "STR_SELECT_BASE_8", "STR_GEOSCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattleLeft", &keyBattleLeft, SDLK_LEFT, "STR_SCROLL_LEFT", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattleRight", &keyBattleRight, SDLK_RIGHT, "STR_SCROLL_RIGHT", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattleUp", &keyBattleUp, SDLK_UP, "STR_SCROLL_UP", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattleDown", &keyBattleDown, SDLK_DOWN, "STR_SCROLL_DOWN", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattleLevelUp", &keyBattleLevelUp, SDLK_PAGEUP, "STR_VIEW_LEVEL_ABOVE", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattleLevelDown", &keyBattleLevelDown, SDLK_PAGEDOWN, "STR_VIEW_LEVEL_BELOW", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattleCenterUnit", &keyBattleCenterUnit, SDLK_HOME, "STR_CENTER_SELECTED_UNIT", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattlePrevUnit", &keyBattlePrevUnit, SDLK_UNKNOWN, "STR_PREVIOUS_UNIT", "STR_BATTLESCAPE")); // different default in OXCE
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattleNextUnit", &keyBattleNextUnit, SDLK_TAB, "STR_NEXT_UNIT", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattleDeselectUnit", &keyBattleDeselectUnit, SDLK_BACKSLASH, "STR_DESELECT_UNIT", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattleUseLeftHand", &keyBattleUseLeftHand, SDLK_q, "STR_USE_LEFT_HAND", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattleUseRightHand", &keyBattleUseRightHand, SDLK_e, "STR_USE_RIGHT_HAND", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattleInventory", &keyBattleInventory, SDLK_i, "STR_INVENTORY", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattleMap", &keyBattleMap, SDLK_m, "STR_MINIMAP", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattleOptions", &keyBattleOptions, SDLK_ESCAPE, "STR_OPTIONS", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattleEndTurn", &keyBattleEndTurn, SDLK_BACKSPACE, "STR_END_TURN", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattleAbort", &keyBattleAbort, SDLK_a, "STR_ABORT_MISSION", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattleStats", &keyBattleStats, SDLK_s, "STR_UNIT_STATS", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattleKneel", &keyBattleKneel, SDLK_k, "STR_KNEEL", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattleReload", &keyBattleReload, SDLK_r, "STR_RELOAD", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattlePersonalLighting", &keyBattlePersonalLighting, SDLK_l, "STR_TOGGLE_PERSONAL_LIGHTING", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattleReserveNone", &keyBattleReserveNone, SDLK_F1, "STR_DONT_RESERVE_TIME_UNITS", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattleReserveSnap", &keyBattleReserveSnap, SDLK_F2, "STR_RESERVE_TIME_UNITS_FOR_SNAP_SHOT", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattleReserveAimed", &keyBattleReserveAimed, SDLK_F3, "STR_RESERVE_TIME_UNITS_FOR_AIMED_SHOT", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattleReserveAuto", &keyBattleReserveAuto, SDLK_F4, "STR_RESERVE_TIME_UNITS_FOR_AUTO_SHOT", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattleReserveKneel", &keyBattleReserveKneel, SDLK_j, "STR_RESERVE_TIME_UNITS_FOR_KNEEL", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattleZeroTUs", &keyBattleZeroTUs, SDLK_DELETE, "STR_EXPEND_ALL_TIME_UNITS", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattleCenterEnemy1", &keyBattleCenterEnemy1, SDLK_1, "STR_CENTER_ON_ENEMY_1", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattleCenterEnemy2", &keyBattleCenterEnemy2, SDLK_2, "STR_CENTER_ON_ENEMY_2", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattleCenterEnemy3", &keyBattleCenterEnemy3, SDLK_3, "STR_CENTER_ON_ENEMY_3", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattleCenterEnemy4", &keyBattleCenterEnemy4, SDLK_4, "STR_CENTER_ON_ENEMY_4", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattleCenterEnemy5", &keyBattleCenterEnemy5, SDLK_5, "STR_CENTER_ON_ENEMY_5", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattleCenterEnemy6", &keyBattleCenterEnemy6, SDLK_6, "STR_CENTER_ON_ENEMY_6", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattleCenterEnemy7", &keyBattleCenterEnemy7, SDLK_7, "STR_CENTER_ON_ENEMY_7", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattleCenterEnemy8", &keyBattleCenterEnemy8, SDLK_8, "STR_CENTER_ON_ENEMY_8", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattleCenterEnemy9", &keyBattleCenterEnemy9, SDLK_9, "STR_CENTER_ON_ENEMY_9", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattleCenterEnemy10", &keyBattleCenterEnemy10, SDLK_0, "STR_CENTER_ON_ENEMY_10", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyBattleVoxelView", &keyBattleVoxelView, SDLK_F10, "STR_SAVE_VOXEL_VIEW", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyInvCreateTemplate", &keyInvCreateTemplate, SDLK_c, "STR_CREATE_INVENTORY_TEMPLATE", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyInvApplyTemplate", &keyInvApplyTemplate, SDLK_v, "STR_APPLY_INVENTORY_TEMPLATE", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyInvClear", &keyInvClear, SDLK_x, "STR_CLEAR_INVENTORY", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OXC, "keyInvAutoEquip", &keyInvAutoEquip, SDLK_z, "STR_AUTO_EQUIP", "STR_BATTLESCAPE"));
+void createOptionsAndroid()
+{
+	// SDL2 scaler options
+	_info.push_back(OptionInfo(OPTION_OXC, "useNearestScaler", &useNearestScaler, false));
+	_info.push_back(OptionInfo(OPTION_OXC, "useLinearScaler", &useLinearScaler, true));
+	_info.push_back(OptionInfo(OPTION_OXC, "useAnisotropicScaler", &useAnisotropicScaler, false));
+	_info.push_back(OptionInfo(OPTION_OXC, "useSoftwareRenderer", &useSoftwareRenderer, false));
+
+	// System-specific
+	_info.push_back(OptionInfo(OPTION_OXC, "systemUI", (int*)&systemUI, SYSTEMUI_ALWAYS_SHOWN));
+	_info.push_back(OptionInfo(OPTION_OXC, "logToFile", &logToFile, false));
+	_info.push_back(OptionInfo(OPTION_OXC, "logToSystem", &logToSystem, true));
+	_info.push_back(OptionInfo(OPTION_OXC, "logTouch", &logTouch, false));
+	_info.push_back(OptionInfo(OPTION_OXC, "fakeEvents", &fakeEvents, true));
+	_info.push_back(OptionInfo(OPTION_OXC, "forceGLMode", &forceGLMode, true));
+	_info.push_back(OptionInfo(OPTION_OXC, "mouseMode", &mouseMode, 0));
+	_info.push_back(OptionInfo(OPTION_OXC, "longPressDuration", &longPressDuration, 500));
+
+#ifdef __MOBILE__
+	_info.push_back(OptionInfo(OPTION_OXC, "showCursor", &showCursor, false));
+#else
+	_info.push_back(OptionInfo(OPTION_OXC, "showCursor", &showCursor, true));
+#endif
+}
+
+void createAdvancedOptionsAndroid()
+{
+#ifdef __MOBILE__
+	_info.push_back(OptionInfo(OPTION_OXC, "listDragScroll", &listDragScroll, true, "STR_LISTDRAGSCROLL", "STR_GENERAL"));
+#else
+	_info.push_back(OptionInfo(OPTION_OXC, "listDragScroll", &listDragScroll, false, "STR_LISTDRAGSCROLL", "STR_GENERAL"));
+#endif
+#ifdef __MOBILE__
+	_info.push_back(OptionInfo(OPTION_OXC, "dragSoldierReorder", &dragSoldierReorder, true, "STR_DRAGREORDER", "STR_GEOSCAPE"));
+#else
+	_info.push_back(OptionInfo(OPTION_OXC, "dragSoldierReorder", &dragSoldierReorder, false, "STR_DRAGREORDER", "STR_GEOSCAPE"));
+#endif
+
+#if defined(__MOBILE__) || defined (__PSEUDO_ANDROID__)
+	_info.push_back(OptionInfo(OPTION_OXC, "swipeToTurn", &swipeToTurn, true, "STR_SWIPE", "STR_BATTLESCAPE")); // These first two options are specific to Android;
+	_info.push_back(OptionInfo(OPTION_OXC, "holdToTurn", &holdToTurn, true, "STR_HOLD", "STR_BATTLESCAPE"));    // they're moved here from a separate menu.
+#else
+	_info.push_back(OptionInfo(OPTION_OXC, "swipeToTurn", &swipeToTurn, false));
+	_info.push_back(OptionInfo(OPTION_OXC, "holdToTurn", &holdToTurn, false));
+#endif
 }
 
 void createOptionsOXCE()
@@ -675,6 +647,7 @@ void resetDefault(bool includeMods)
  */
 static void loadArgs()
 {
+	Options::systemLocale = "";
 	auto& argv = CrossPlatform::getArgs();
 	for (size_t i = 1; i < argv.size(); ++i)
 	{
@@ -721,6 +694,11 @@ static void loadArgs()
 					if (_configFolder.size() > 1 && _configFolder[_configFolder.size() - 1] != '/') {
 						_configFolder.push_back('/');
 					}
+				}
+				else if (argname == "locale")
+				{
+					systemLocale += argv[i];
+					Log(LOG_INFO) << "Current locale is " << systemLocale;
 				}
 				else if (argname == "master")
 				{
@@ -877,7 +855,7 @@ bool init()
 #elif __APPLE__
 	Log(LOG_INFO) << "Platform: OSX";
 #elif  __ANDROID_API__
-	Log(LOG_INFO) << "Platform: Android " << __ANDROID_API__;
+	Log(LOG_INFO) << "Platform: Android " << __ANDROID_API__ ;
 #elif __linux__
 	Log(LOG_INFO) << "Platform: Linux";
 #else
@@ -1507,6 +1485,21 @@ void switchDisplay()
 	std::swap(fullscreen, newFullscreen);
 	std::swap(allowResize, newAllowResize);
 	std::swap(borderless, newBorderless);
+	std::swap(useNearestScaler, newNearestScaler);
+	std::swap(useLinearScaler, newLinearScaler);
+	std::swap(useAnisotropicScaler, newAnisotropicScaler);
+}
+
+void setUserFolder(const std::string &userFolder)
+{
+	_userFolder = userFolder;
+	Log(LOG_INFO) << "Options::setUserFolder: user folder set to " << _userFolder;
+}
+
+void setConfFolder(const std::string &confFolder)
+{
+	_configFolder = confFolder;
+	Log(LOG_INFO) << "Options::setConfFolder: config folder set to " << _configFolder;
 }
 
 }

@@ -32,7 +32,7 @@ private:
 	/// Check if the given soldier has all the required soldier bonuses for this soldier skill.
 	bool soldierHasAllRequiredBonusesForSkill(Soldier *soldier, const RuleSkill *skillRules);
 	/// Adds a new menu item for an action.
-	void addItem(const RuleSkill* skill, int *id, SDLKey key);
+	void addItem(const RuleSkill* skill, int *id, SDL_Keycode key);
 	/// Choose an action weapon based on given parameters.
 	void chooseWeaponForSkill(BattleAction* action, const RuleSkill* skillRules);
 public:

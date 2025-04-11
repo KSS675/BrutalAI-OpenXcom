@@ -62,6 +62,14 @@ enum ScaleType
 	SCALE_SCREEN_DIV_5,
 	SCALE_SCREEN_DIV_6
 };
+
+// System-specific UI setting
+enum SystemUIStyle
+{
+	SYSTEMUI_ALWAYS_SHOWN,
+	SYSTEMUI_LOW_PROFILE,
+	SYSTEMUI_IMMERSIVE
+};
 /**
  * Container for all the various global game options
  * and customizable settings.
@@ -74,6 +82,8 @@ namespace Options
 
 	/// Creates the options info.
 	void create();
+	void createOptionsAndroid();
+	void createAdvancedOptionsAndroid();
 	void createOptionsOXC();
 	void createAdvancedOptionsOXC();
 	void createControlsOXC();
@@ -135,6 +145,10 @@ namespace Options
 	const std::string& getLoadThisSave();
 	/// And do it only at startup
 	void expendLoadLastSave();
+	/// Sets the user folder (should be called from Java)
+	void setUserFolder(const std::string &userFolder);
+	/// Sets the config folder (should be called from Java)
+	void setConfFolder(const std::string &confFolder);
 }
 
 }

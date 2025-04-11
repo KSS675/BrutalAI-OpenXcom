@@ -16,7 +16,9 @@
  * You should have received a copy of the GNU General Public License
  * along with OpenXcom.  If not, see <http://www.gnu.org/licenses/>.
  */
+#define _USE_MATH_DEFINES
 #include "Globe.h"
+#include <cmath>
 #include "../fmath.h"
 #include "../Engine/Action.h"
 #include "../Engine/SurfaceSet.h"
@@ -53,6 +55,7 @@
 #include "../Mod/Texture.h"
 #include "../Interface/Cursor.h"
 #include "../Engine/Screen.h"
+#include "../Engine/CrossPlatform.h"
 
 namespace OpenXcom
 {
@@ -97,7 +100,7 @@ struct GlobeStaticData
 	 * @param y cord of point where we getting this vector
 	 * @return normal vector of sphere surface
 	 */
-	static inline Cord circle_norm(double ox, double oy, double r, double x, double y)
+	inline Cord circle_norm(double ox, double oy, double r, double x, double y)
 	{
 		const double limit = r*r;
 		const double norm = 1./r;
@@ -410,20 +413,26 @@ void Globe::polarToCart(double lon, double lat, double *x, double *y) const
  * @param y Y position of the cartesian point.
  * @param lon Pointer to the output longitude.
  * @param lat Pointer to the output latitude.
+ * @return True if conversion is possible, false otherwise
  */
-void Globe::cartToPolar(Sint16 x, Sint16 y, double *lon, double *lat) const
+	bool Globe::cartToPolar(Sint16 x, Sint16 y, double *lon, double *lat) const
 {
 	// Orthographic projection
 	x -= _cenX;
 	y -= _cenY;
 
 	double rho = sqrt((double)(x*x + y*y));
+	if (rho > _radius)
+	{
+		*lat = 4 * M_PI;
+		*lon = 4 * M_PI;
+		return false;
+	}
 	double c = asin(rho / _radius);
 	if ( AreSame(rho, 0.0) )
 	{
 		*lat = _cenLat;
 		*lon = _cenLon;
-
 	}
 	else
 	{
@@ -436,6 +445,7 @@ void Globe::cartToPolar(Sint16 x, Sint16 y, double *lon, double *lat) const
 		*lon += 2 * M_PI;
 	while (*lon >= 2 * M_PI)
 		*lon -= 2 * M_PI;
+	return true;
 }
 
 /**
