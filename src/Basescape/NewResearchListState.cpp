@@ -124,9 +124,9 @@ NewResearchListState::NewResearchListState(Base *base, bool sortByCost) : _base(
 	_lstResearch->setBackground(_window);
 	_lstResearch->setMargin(8);
 	_lstResearch->setAlign(ALIGN_CENTER);
-	_lstResearch->onMouseClick((ActionHandler)&NewResearchListState::onSelectProject, SDL_BUTTON_LEFT);
-	_lstResearch->onMouseClick((ActionHandler)&NewResearchListState::onToggleProjectStatus, SDL_BUTTON_RIGHT);
-	_lstResearch->onMouseClick((ActionHandler)&NewResearchListState::onOpenTechTreeViewer, SDL_BUTTON_MIDDLE);
+	_lstResearch->onMouseClick((ActionHandler)&NewResearchListState::onClick, SDL_BUTTON_LEFT);
+	_lstResearch->onMouseClick((ActionHandler)&NewResearchListState::onClick, SDL_BUTTON_RIGHT);
+	_lstResearch->onMouseClick((ActionHandler)&NewResearchListState::onClick, SDL_BUTTON_MIDDLE);
 
 	_btnQuickSearch->setText(""); // redraw
 	_btnQuickSearch->onEnter((ActionHandler)&NewResearchListState::btnQuickSearchApply);

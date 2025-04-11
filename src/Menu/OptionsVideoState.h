@@ -53,8 +53,8 @@ private:
 	Text *_txtOptions;
 	ToggleTextButton *_btnLetterbox, *_btnLockMouse, *_btnRootWindowedMode;
 
-	SDL_Rect** _res;
-	int _resAmount, _resCurrent;
+	std::vector<SDL_DisplayMode> _res;
+	int _resCurrent;
 	std::vector<std::string> _langs, _filters;
 	std::vector<int> _scales, _reverseScales;
 

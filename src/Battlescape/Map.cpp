@@ -1906,7 +1906,7 @@ void Map::drawTerrain(Surface *surface)
 								}
 								else
 								{
-								tmpSurface = _game->getMod()->getSurfaceSet("CURSOR.PCK")->getFrame(7);
+									tmpSurface = _game->getMod()->getSurfaceSet("CURSOR.PCK")->getFrame(7);
 								}
 								Surface::blitRaw(surface, tmpSurface, screenPosition.x, screenPosition.y, 0);
 							}
@@ -2773,7 +2773,7 @@ void Map::scrollKey()
  */
 void Map::fadeShade()
 {
-	bool hold = SDL_GetKeyState(NULL)[Options::keyNightVisionHold];
+	bool hold = SDL_GetKeyboardState(NULL)[SDL_GetScancodeFromKey(Options::keyNightVisionHold)];
 	if ((_nightVisionOn && !hold) || (!_nightVisionOn && hold))
 	{
 		_nvColor = Options::oxceNightVisionColor;

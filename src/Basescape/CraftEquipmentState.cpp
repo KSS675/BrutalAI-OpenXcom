@@ -143,7 +143,7 @@ CraftEquipmentState::CraftEquipmentState(Base *base, size_t craft) :
 	else
 	{
 		_txtTitle->setAlign(ALIGN_LEFT);
-	_txtTitle->setText(tr("STR_EQUIPMENT_FOR_CRAFT").arg(c->getName(_game->getLanguage())));
+		_txtTitle->setText(tr("STR_EQUIPMENT_FOR_CRAFT").arg(c->getName(_game->getLanguage())));
 	}
 
 	_txtItem->setText(tr("STR_ITEM"));
@@ -554,7 +554,7 @@ void CraftEquipmentState::btnOkClick(Action *)
 void CraftEquipmentState::lstEquipmentLeftArrowPress(Action *action)
 {
 	_sel = _lstEquipment->getSelectedRow();
-	if (action->getDetails()->button.button == SDL_BUTTON_LEFT && !_timerLeft->isRunning()) _timerLeft->start();
+	if (_game->isLeftClick(action, true) && !_timerLeft->isRunning()) _timerLeft->start();
 }
 
 /**
@@ -563,7 +563,7 @@ void CraftEquipmentState::lstEquipmentLeftArrowPress(Action *action)
  */
 void CraftEquipmentState::lstEquipmentLeftArrowRelease(Action *action)
 {
-	if (action->getDetails()->button.button == SDL_BUTTON_LEFT)
+	if (_game->isLeftClick(action, true))
 	{
 		_timerLeft->stop();
 	}
@@ -575,10 +575,10 @@ void CraftEquipmentState::lstEquipmentLeftArrowRelease(Action *action)
  */
 void CraftEquipmentState::lstEquipmentLeftArrowClick(Action *action)
 {
-	if (action->getDetails()->button.button == SDL_BUTTON_RIGHT) moveLeftByValue(INT_MAX);
-	if (action->getDetails()->button.button == SDL_BUTTON_LEFT)
+	if (_game->isRightClick(action, true)) moveLeftByValue(INT_MAX);
+	if (_game->isLeftClick(action, true))
 	{
-		moveLeftByValue(1);
+		moveLeftByValue(_game->getScrollStep());
 		_timerRight->setInterval(250);
 		_timerLeft->setInterval(250);
 	}
@@ -591,7 +591,7 @@ void CraftEquipmentState::lstEquipmentLeftArrowClick(Action *action)
 void CraftEquipmentState::lstEquipmentRightArrowPress(Action *action)
 {
 	_sel = _lstEquipment->getSelectedRow();
-	if (action->getDetails()->button.button == SDL_BUTTON_LEFT && !_timerRight->isRunning()) _timerRight->start();
+	if (_game->isLeftClick(action, true) && !_timerRight->isRunning()) _timerRight->start();
 }
 
 /**
@@ -600,7 +600,7 @@ void CraftEquipmentState::lstEquipmentRightArrowPress(Action *action)
  */
 void CraftEquipmentState::lstEquipmentRightArrowRelease(Action *action)
 {
-	if (action->getDetails()->button.button == SDL_BUTTON_LEFT)
+	if (_game->isLeftClick(action, true))
 	{
 		_timerRight->stop();
 	}
@@ -612,12 +612,28 @@ void CraftEquipmentState::lstEquipmentRightArrowRelease(Action *action)
  */
 void CraftEquipmentState::lstEquipmentRightArrowClick(Action *action)
 {
-	if (action->getDetails()->button.button == SDL_BUTTON_RIGHT) moveRightByValue(INT_MAX);
-	if (action->getDetails()->button.button == SDL_BUTTON_LEFT)
+	if (_game->isRightClick(action, true)) moveRightByValue(INT_MAX);
+	if (_game->isLeftClick(action, true))
 	{
-		moveRightByValue(1);
+		moveRightByValue(_game->getScrollStep());
 		_timerRight->setInterval(250);
 		_timerLeft->setInterval(250);
+	}
+}
+
+/**
+ * Handles middle-click
+ * @param action Pointer to an action.
+ */
+void CraftEquipmentState::lstEquipmentMousePress(Action *action)
+{
+	_sel = _lstEquipment->getSelectedRow();
+	if (_game->isMiddleClick(action, true))
+	{
+		_lstScroll = _lstEquipment->getScroll();
+		RuleItem *rule = _game->getMod()->getItem(_items[_sel]);
+		std::string articleId = rule->getUfopediaType();
+		Ufopaedia::openArticle(_game, articleId);
 	}
 }
 
@@ -625,35 +641,22 @@ void CraftEquipmentState::lstEquipmentRightArrowClick(Action *action)
  * Handles the mouse-wheels on the arrow-buttons.
  * @param action Pointer to an action.
  */
-void CraftEquipmentState::lstEquipmentMousePress(Action *action)
+void CraftEquipmentState::lstEquipmentMouseWheel(Action *action)
 {
 	_sel = _lstEquipment->getSelectedRow();
-	if (action->getDetails()->button.button == SDL_BUTTON_WHEELUP)
+	const SDL_Event &ev(*action->getDetails());
+	if (ev.type == SDL_MOUSEWHEEL)
 	{
 		_timerRight->stop();
 		_timerLeft->stop();
 		if (action->getAbsoluteXMouse() >= _lstEquipment->getArrowsLeftEdge() &&
 			action->getAbsoluteXMouse() <= _lstEquipment->getArrowsRightEdge())
 		{
-			moveRightByValue(Options::changeValueByMouseWheel);
+			if (ev.wheel.y > 0)
+				moveRightByValue(Options::changeValueByMouseWheel);
+			else
+				moveLeftByValue(Options::changeValueByMouseWheel);
 		}
-	}
-	else if (action->getDetails()->button.button == SDL_BUTTON_WHEELDOWN)
-	{
-		_timerRight->stop();
-		_timerLeft->stop();
-		if (action->getAbsoluteXMouse() >= _lstEquipment->getArrowsLeftEdge() &&
-			action->getAbsoluteXMouse() <= _lstEquipment->getArrowsRightEdge())
-		{
-			moveLeftByValue(Options::changeValueByMouseWheel);
-		}
-	}
-	else if (action->getDetails()->button.button == SDL_BUTTON_MIDDLE)
-	{
-		_lstScroll = _lstEquipment->getScroll();
-		RuleItem *rule = _game->getMod()->getItem(_items[_sel]);
-		std::string articleId = rule->getUfopediaType();
-		Ufopaedia::openArticle(_game, articleId);
 	}
 }
 

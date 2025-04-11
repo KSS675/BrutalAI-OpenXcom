@@ -18,6 +18,7 @@
  */
 #include "InteractiveSurface.h"
 #include "Action.h"
+#include "CrossPlatform.h"
 
 namespace OpenXcom
 {
@@ -31,7 +32,7 @@ const SDL_Keycode InteractiveSurface::SDLK_ANY = (SDL_Keycode)-1; // using an un
  * @param x X position in pixels.
  * @param y Y position in pixels.
  */
-InteractiveSurface::InteractiveSurface(int width, int height, int x, int y) : Surface(width, height, x, y), _buttonsPressed(0), _in(0), _over(0), _out(0), _isHovered(false), _isFocused(true), _listButton(false), _tftdMode(false)
+InteractiveSurface::InteractiveSurface(int width, int height, int x, int y) : Surface(width, height, x, y), _buttonsPressed(0), _in(0), _over(0), _out(0), _fingerMotion(0), _multiGesture(0), _wheel(NULL), _isHovered(false), _isFocused(true), _listButton(false), _tftdMode(false)
 {
 }
 
@@ -140,7 +141,7 @@ void InteractiveSurface::handle(Action *action, State *state)
 			}
 			if (_listButton && action->getDetails()->type == SDL_MOUSEMOTION)
 			{
-				_buttonsPressed = SDL_GetMouseState(0, 0);
+				_buttonsPressed = CrossPlatform::getPointerState(0, 0);
 				for (Uint8 i = 1; i <= NUM_BUTTONS; ++i)
 				{
 					if (isButtonPressed(i))

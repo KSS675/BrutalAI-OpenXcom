@@ -49,8 +49,6 @@ public:
 	OptionInfo(OptionOwner owner, const std::string &id, bool *option, bool def, const std::string &desc = "", const std::string &cat = "");
 	/// Creates a int option.
 	OptionInfo(OptionOwner owner, const std::string &id, int *option, int def, const std::string &desc = "", const std::string &cat = "");
-	/// Creates a key option.
-	OptionInfo(OptionOwner owner, const std::string &id, SDLKey *option, SDLKey def, const std::string &desc = "", const std::string &cat = "");
 	/// Creates a string option.
 	OptionInfo(OptionOwner owner, const std::string &id, std::string *option, const char *def, const std::string &desc = "", const std::string &cat = "");
 	/// Gets a bool option pointer.

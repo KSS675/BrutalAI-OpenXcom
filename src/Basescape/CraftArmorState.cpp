@@ -155,7 +155,7 @@ CraftArmorState::CraftArmorState(Base *base, size_t craft) : _base(base), _craft
 	_lstSoldiers->onLeftArrowClick((ActionHandler)&CraftArmorState::lstItemsLeftArrowClick);
 	_lstSoldiers->onRightArrowClick((ActionHandler)&CraftArmorState::lstItemsRightArrowClick);
 	_lstSoldiers->onMouseClick((ActionHandler)&CraftArmorState::lstSoldiersClick, 0);
-	_lstSoldiers->onMousePress((ActionHandler)&CraftArmorState::lstSoldiersMousePress);
+	//_lstSoldiers->onMousePress((ActionHandler)&CraftArmorState::lstSoldiersMousePress);
 }
 
 /**
@@ -574,6 +574,7 @@ void CraftArmorState::lstSoldiersClick(Action *action)
  */
 void CraftArmorState::lstSoldiersMousePress(Action *action)
 {
+	/*
 	if (Options::changeValueByMouseWheel == 0)
 		return;
 	unsigned int row = _lstSoldiers->getSelectedRow();
@@ -596,6 +597,7 @@ void CraftArmorState::lstSoldiersMousePress(Action *action)
 			moveSoldierDown(action, row);
 		}
 	}
+	*/
 }
 
 /**

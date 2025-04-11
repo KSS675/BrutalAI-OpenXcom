@@ -123,7 +123,7 @@ ManufactureState::ManufactureState(Base *base) : _base(base)
 	_lstManufacture->setWordWrap(true);
 	_lstManufacture->onMouseClick((ActionHandler)&ManufactureState::lstManufactureClickLeft, SDL_BUTTON_LEFT);
 	_lstManufacture->onMouseClick((ActionHandler)&ManufactureState::lstManufactureClickMiddle, SDL_BUTTON_MIDDLE);
-	_lstManufacture->onMousePress((ActionHandler)&ManufactureState::lstManufactureMousePress);
+	//_lstManufacture->onMousePress((ActionHandler)&ManufactureState::lstManufactureMousePress);
 }
 
 /**
@@ -264,6 +264,7 @@ void ManufactureState::lstManufactureClickMiddle(Action *)
  */
 void ManufactureState::lstManufactureMousePress(Action *action)
 {
+	/*
 	if (!_lstManufacture->isInsideNoScrollArea(action->getAbsoluteXMouse()))
 	{
 		return;
@@ -302,6 +303,7 @@ void ManufactureState::lstManufactureMousePress(Action *action)
 			fillProductionList(_lstManufacture->getScroll());
 		}
 	}
+	*/
 }
 
 }

@@ -19,7 +19,7 @@
  */
 #include <SDL.h>
 #include <string>
-#include "OpenGL.h"
+#include <vector>
 #include "Surface.h"
 
 namespace OpenXcom
@@ -41,17 +41,17 @@ class Renderer;
 class Screen
 {
 private:
-	SDL_Surface *_screen;
+	//SDL_Surface *_screen;
+	SDL_Window *_window;
+	Renderer *_renderer;
 	int _bpp;
 	int _baseWidth, _baseHeight;
-	double _scaleX, _scaleY;
+	double _scaleX, _scaleY, _scale;
 	int _topBlackBand, _bottomBlackBand, _leftBlackBand, _rightBlackBand, _cursorTopBlackBand, _cursorLeftBlackBand;
 	Uint32 _flags;
 	SDL_Color deferredPalette[256];
 	int _numColors, _firstColor;
 	bool _pushPalette;
-	bool _flickerFix;
-	OpenGL glOutput;
 	Surface::UniqueBufferPtr _buffer;
 	Surface::UniqueSurfacePtr _surface;
 	/// Sets the _flags and _bpp variables based on game options; needed in more than one place now
@@ -81,7 +81,7 @@ public:
 	/// Sets the screen's 8bpp palette.
 	void setPalette(const SDL_Color *colors, int firstcolor = 0, int ncolors = 256, bool immediately = false);
 	/// Gets the screen's 8bpp palette.
-	SDL_Color *getPalette() const;
+	const SDL_Color *getPalette() const;
 	/// Gets the screen's width.
 	int getWidth() const;
 	/// Gets the screen's height.

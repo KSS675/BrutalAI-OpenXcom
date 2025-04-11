@@ -231,7 +231,8 @@ void OptionsBaseState::btnOkClick(Action *)
 	recenter(dX, dY);
 	Options::save();
 	_game->loadLanguages();
-	SDL_WM_GrabInput(Options::captureMouse);
+	SDL_SetWindowGrab(_game->getScreen()->getWindow(), (Options::captureMouse)?SDL_TRUE:SDL_FALSE); //Breaks stuff. Hard.
+	CrossPlatform::setSystemUI();
 	_game->getScreen()->resetDisplay();
 	_game->setVolume(Options::soundVolume, Options::musicVolume, Options::uiVolume);
 	if (Options::reload && _origin == OPT_MENU)
@@ -244,8 +245,9 @@ void OptionsBaseState::btnOkClick(Action *)
 		if (Options::displayWidth != Options::newDisplayWidth ||
 			Options::displayHeight != Options::newDisplayHeight ||
 			Options::useOpenGL != Options::newOpenGL ||
-			Options::useScaleFilter != Options::newScaleFilter ||
-			Options::useHQXFilter != Options::newHQXFilter ||
+			Options::useNearestScaler != Options::newNearestScaler ||
+			Options::useLinearScaler != Options::newLinearScaler ||
+			Options::useAnisotropicScaler != Options::newAnisotropicScaler ||
 			Options::useOpenGLShader != Options::newOpenGLShader)
 		{
 			_game->pushState(new OptionsConfirmState(_origin));
@@ -265,7 +267,9 @@ void OptionsBaseState::btnCancelClick(Action *)
 {
 	Options::reload = false;
 	Options::load();
-	SDL_WM_GrabInput(Options::captureMouse);
+	// Again, Android and stuff.
+	SDL_bool captureMouse = Options::captureMouse ? SDL_TRUE : SDL_FALSE;
+	SDL_SetWindowGrab(_game->getScreen()->getWindow(), captureMouse);
 	Screen::updateScale(Options::battlescapeScale, Options::baseXBattlescape, Options::baseYBattlescape, _origin == OPT_BATTLESCAPE);
 	Screen::updateScale(Options::geoscapeScale, Options::baseXGeoscape, Options::baseYGeoscape, _origin != OPT_BATTLESCAPE);
 	_game->setVolume(Options::soundVolume, Options::musicVolume, Options::uiVolume);

@@ -1221,21 +1221,21 @@ void TextList::mouseWheel(Action *action, State *state)
 	{
 		allowScroll = false;
 	}
-	if (allowScroll)
+	if (allowScroll && action->getDetails()->type == SDL_MOUSEWHEEL)
 	{
-		if (action->getDetails()->button.button == SDL_BUTTON_WHEELUP) scrollUp(false, true);
-		else if (action->getDetails()->button.button == SDL_BUTTON_WHEELDOWN) scrollDown(false, true);
+		if (action->getDetails()->wheel.y > 0) scrollUp(false, true);
+		else scrollDown(false, true);
 	}
 	if (_selectable)
 	{
 		if (_selRow < _rows.size())
 		{
-			InteractiveSurface::mousePress(action, state);
+			InteractiveSurface::mouseWheel(action, state);
 		}
 	}
 	else
 	{
-		InteractiveSurface::mousePress(action, state);
+		InteractiveSurface::mouseWheel(action, state);
 	}
 }
 
