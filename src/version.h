@@ -22,7 +22,7 @@
 
 #define OPENXCOM_VERSION_ENGINE "Extended"
 
-#define OPENXCOM_VERSION_SHORT "Extended Brutal Android 8.2.0"
+#define OPENXCOM_VERSION_SHORT "Extended Brutal 8.2.0"
 #define OPENXCOM_VERSION_LONG "8.2.0.0"
 #define OPENXCOM_VERSION_NUMBER 8,2,0,0
 
