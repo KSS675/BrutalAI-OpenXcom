@@ -537,7 +537,8 @@ void BaseInfoState::handleKeyPress(Action *action)
 {
 	if (action->getDetails()->type == SDL_KEYDOWN)
 	{
-		SDLKey baseKeys[] = {
+		// SDL2 uses SDL_Keycode struct
+		SDL_Keycode baseKeys[] = {
 			Options::keyBaseSelect1,
 			Options::keyBaseSelect2,
 			Options::keyBaseSelect3,

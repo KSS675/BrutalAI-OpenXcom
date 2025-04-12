@@ -58,6 +58,7 @@
 #include "BattlescapeGenerator.h"
 #include "ExtendedInventoryLinksState.h"
 #include "TileEngine.h"
+#include "../Engine/CrossPlatform.h"
 #include "../Mod/RuleInterface.h"
 #include "../Ufopaedia/Ufopaedia.h"
 
@@ -781,6 +782,23 @@ void InventoryState::btnArmorClick(Action *action)
 	// don't accept clicks when moving items
 	if (_inv->getSelectedItem() != 0)
 	{
+		// but we can reuse this for quickly dropping an item (as a Ctrl+L-click alternative)
+		if (Options::oxceInventoryDropItemOverPaperdoll)
+		{
+			if (_inv->quickDrop())
+			{
+				// hide selected item info
+				invMouseOut(action);
+
+				// refresh ui
+				_inv->arrangeGround();
+				updateStats();
+				refreshMouse();
+
+				// give audio feedback
+				_game->getMod()->getSoundByDepth(_battleGame->getDepth(), Mod::ITEM_DROP)->play();
+			}
+		}
 		return;
 	}
 
@@ -1246,7 +1264,18 @@ void InventoryState::btnQuickSearchApply(Action *)
  */
 void InventoryState::btnGroundClickForward(Action *action)
 {
-	if (_game->isShiftPressed())
+	bool scrollBackwards = _game->isShiftPressed();
+	if (Options::oxceInventorySplitScrollButton)
+	{
+		double mx = action->getAbsoluteXMouse();
+		if (mx <= _btnGround->getX() + (_btnGround->getWidth() / 2.0))
+		{
+			// clicked on the left half of the button
+			scrollBackwards = true;
+		}
+	}
+
+	if (scrollBackwards)
 	{
 		// scroll backwards
 		_inv->arrangeGround(-1);
@@ -1680,11 +1709,11 @@ void InventoryState::refreshMouse()
 {
 	// send a mouse motion event to refresh any hover actions
 	int x, y;
-	SDL_GetMouseState(&x, &y);
-	SDL_WarpMouse(x+1, y);
+	CrossPlatform::getPointerState(&x, &y);
+	SDL_WarpMouseInWindow(NULL, x+1, y);
 
 	// move the mouse back to avoid cursor creep
-	SDL_WarpMouse(x, y);
+	SDL_WarpMouseInWindow(NULL, x, y);
 }
 
 void InventoryState::onClearInventory(Action *)

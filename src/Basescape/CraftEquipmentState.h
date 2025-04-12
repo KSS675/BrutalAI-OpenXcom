@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU General Public License
  * along with OpenXcom.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "../Engine/State.h"
+#include "../Engine/TouchState.h"
 #include <vector>
 #include <map>
 #include <string>
@@ -38,7 +38,7 @@ class Base;
  * Equipment screen that lets the player
  * pick the equipment to carry on a craft.
  */
-class CraftEquipmentState : public State
+class CraftEquipmentState : public TouchState
 {
 private:
 	TextButton *_btnOk, *_btnClear, *_btnInventory;
@@ -96,6 +96,8 @@ public:
 	void lstEquipmentRightArrowClick(Action *action);
 	/// Handler for pressing-down a mouse-button in the list.
 	void lstEquipmentMousePress(Action *action);
+	/// Handler for mousewheel events.
+	void lstEquipmentMouseWheel(Action *action);
 	/// Moves an item to the base.
 	void moveLeft();
 	/// Moves the given number of items to the base.

@@ -478,7 +478,13 @@ void OptionsAdvancedState::lstOptionsClick(Action *action)
 			min = 0;
 			max = 2;
 		}
-
+#ifdef __ANDROID__
+		else if (i == &Options::maxFrameSkip)
+		{
+			min = 0;
+			max = 5;
+		}
+#endif
 		if (*i < min)
 		{
 			*i = max;

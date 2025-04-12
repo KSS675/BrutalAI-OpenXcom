@@ -2007,7 +2007,7 @@ void BattlescapeGame::primaryAction(Position pos)
 				playUnitResponseSound(unit, 0); // "select unit" sound
 			}
 		}
-		else if (playableUnitSelected())
+		else if (playableUnitSelected() /*&& !_parentState->hasScrolled()*/)
 		{
 			bool isCtrlPressed = Options::strafe && _save->isCtrlPressed(true);
 			bool isAltPressed = Options::strafe && _save->isAltPressed(true);

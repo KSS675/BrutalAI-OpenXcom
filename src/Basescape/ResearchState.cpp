@@ -109,7 +109,7 @@ ResearchState::ResearchState(Base *base) : _base(base)
 	_lstResearch->setWordWrap(true);
 	_lstResearch->onMouseClick((ActionHandler)&ResearchState::onSelectProject, SDL_BUTTON_LEFT);
 	_lstResearch->onMouseClick((ActionHandler)&ResearchState::onOpenTechTreeViewer, SDL_BUTTON_MIDDLE);
-	_lstResearch->onMousePress((ActionHandler)&ResearchState::lstResearchMousePress);
+	//_lstResearch->onMousePress((ActionHandler)&ResearchState::lstResearchMousePress);
 }
 
 /**
@@ -165,6 +165,7 @@ void ResearchState::onOpenTechTreeViewer(Action *)
  */
 void ResearchState::lstResearchMousePress(Action *action)
 {
+	/*
 	if (!_lstResearch->isInsideNoScrollArea(action->getAbsoluteXMouse()))
 	{
 		return;
@@ -197,6 +198,7 @@ void ResearchState::lstResearchMousePress(Action *action)
 			fillProjectList(_lstResearch->getScroll());
 		}
 	}
+	*/
 }
 
 /**
