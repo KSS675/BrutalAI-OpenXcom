@@ -17,6 +17,7 @@
  * along with OpenXcom.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "TransferItemsState.h"
+#include "ItemLocationsState.h"
 #include "ManufactureDependenciesTreeState.h"
 #include <sstream>
 #include <climits>
@@ -145,6 +146,11 @@ TransferItemsState::TransferItemsState(Base *baseFrom, Base *baseTo, DebriefingS
 
 	_cats.push_back("STR_ALL_ITEMS");
 	_cats.push_back("STR_ITEMS_AT_DESTINATION");
+	if (Options::oxceBaseFilterResearchable)
+	{
+		_cats.push_back("STR_FILTER_RESEARCHED");
+		_cats.push_back("STR_FILTER_RESEARCHABLE");
+	}
 
 	for (auto* soldier : *_baseFrom->getSoldiers())
 	{
@@ -245,6 +251,11 @@ TransferItemsState::TransferItemsState(Base *baseFrom, Base *baseTo, DebriefingS
 			_cats.clear();
 			_cats.push_back("STR_ALL_ITEMS");
 			_cats.push_back("STR_ITEMS_AT_DESTINATION");
+			if (Options::oxceBaseFilterResearchable)
+			{
+				_cats.push_back("STR_FILTER_RESEARCHED");
+				_cats.push_back("STR_FILTER_RESEARCHABLE");
+			}
 			_vanillaCategories = _cats.size();
 		}
 		for (auto& categoryName : _game->getMod()->getItemCategoriesList())
@@ -412,6 +423,8 @@ void TransferItemsState::updateList()
 	const std::string cat = _cats[selCategory];
 	bool allItems = (cat == "STR_ALL_ITEMS");
 	bool onlyItemsAtDestination = (cat == "STR_ITEMS_AT_DESTINATION");
+	bool categoryResearched = (cat == "STR_FILTER_RESEARCHED");
+	bool categoryResearchable = (cat == "STR_FILTER_RESEARCHABLE");
 	bool categoryUnassigned = (cat == "STR_UNASSIGNED");
 	bool specialCategory = allItems || onlyItemsAtDestination;
 
@@ -430,7 +443,22 @@ void TransferItemsState::updateList()
 	for (size_t i = 0; i < _items.size(); ++i)
 	{
 		// filter
-		if (selCategory >= _vanillaCategories)
+		if (categoryResearched || categoryResearchable)
+		{
+			if (_items[i].type == TRANSFER_ITEM)
+			{
+				RuleItem* rule = (RuleItem*)_items[i].rule;
+				bool isResearchable = _game->getSavedGame()->isResearchable(rule, _game->getMod());
+				if (categoryResearched && isResearchable) continue;
+				if (categoryResearchable && !isResearchable) continue;
+			}
+			else
+			{
+				// don't show non-items (e.g. craft, personnel)
+				continue;
+			}
+		}
+		else if (selCategory >= _vanillaCategories)
 		{
 			if (categoryUnassigned && _items[i].type == TRANSFER_ITEM)
 			{
@@ -774,7 +802,27 @@ void TransferItemsState::lstItemsRightArrowClick(Action *action)
 void TransferItemsState::lstItemsMousePress(Action *action)
 {
 	_sel = _lstItems->getSelectedRow();
-	if (_game->isRightClick(action, true))
+	if (action->getDetails()->button.button == SDL_BUTTON_WHEELUP)
+	{
+		_timerInc->stop();
+		_timerDec->stop();
+		if (action->getAbsoluteXMouse() >= _lstItems->getArrowsLeftEdge() &&
+			action->getAbsoluteXMouse() <= _lstItems->getArrowsRightEdge())
+		{
+			increaseByValue(Options::changeValueByMouseWheel);
+		}
+	}
+	else if (action->getDetails()->button.button == SDL_BUTTON_WHEELDOWN)
+	{
+		_timerInc->stop();
+		_timerDec->stop();
+		if (action->getAbsoluteXMouse() >= _lstItems->getArrowsLeftEdge() &&
+			action->getAbsoluteXMouse() <= _lstItems->getArrowsRightEdge())
+		{
+			decreaseByValue(Options::changeValueByMouseWheel);
+		}
+	}
+	else if (_game->isRightClick(action, true))
 	{
 		if (action->getAbsoluteXMouse() >= _lstItems->getArrowsLeftEdge() &&
 			action->getAbsoluteXMouse() <= _lstItems->getArrowsRightEdge())
@@ -786,7 +834,14 @@ void TransferItemsState::lstItemsMousePress(Action *action)
 			RuleItem *rule = (RuleItem*)getRow().rule;
 			if (rule != 0)
 			{
-				_game->pushState(new ManufactureDependenciesTreeState(rule->getType()));
+				if (_game->isCtrlPressed(true))
+				{
+					_game->pushState(new ItemLocationsState(rule));
+				}
+				else
+				{
+					_game->pushState(new ManufactureDependenciesTreeState(rule->getType()));
+				}
 			}
 		}
 	}

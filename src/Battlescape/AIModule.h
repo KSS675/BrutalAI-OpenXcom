@@ -23,6 +23,7 @@
 #include "Pathfinding.h"
 #include "../Savegame/BattleUnit.h"
 #include <vector>
+#include <set>
 
 
 namespace OpenXcom
@@ -35,6 +36,13 @@ class BattlescapeState;
 class Node;
 
 enum AIMode { AI_PATROL, AI_AMBUSH, AI_COMBAT, AI_ESCAPE };
+enum AIAttackWeight : int
+{
+	/// Base scale of attack weights
+	AIW_SCALE = 100,
+	AIW_IGNORED = 0,
+};
+
 /**
  * This class is used by the BattleUnit AI.
  */
@@ -60,9 +68,7 @@ private:
 	int _tuCostToReachClosestPositionToBreakLos;
 	int _energyCostToReachClosestPositionToBreakLos;
 	int _tuWhenChecking;
-	bool _lookToEnemy = false;
-	bool _lookAround = false;
-	bool _reposition = false;
+	bool _allowedToCheckAttack = false;
 	BattleActionType _reserve;
 	UnitFaction _targetFaction;
 	UnitFaction _myFaction;
@@ -73,6 +79,8 @@ private:
 	int selectNearestTargetLeeroy(bool canRun);
 	void meleeActionLeeroy(bool canRun);
 	void dont_think(BattleAction *action);
+public:
+	bool medikit_think(BattleMediKitType healOrStim);
 public:
 	/// Creates a new AIModule linked to the game and a certain unit.
 	AIModule(SavedBattleGame *save, BattleUnit *unit, Node *node);
@@ -143,8 +151,12 @@ public:
 	bool psiAction();
 	/// Performs a melee attack action.
 	void meleeAttack();
+
+	/// How much given unit is worth as target of attack.
+	AIAttackWeight getTargetAttackWeight(BattleUnit* target) const;
 	/// Checks to make sure a target is valid, given the parameters
 	bool validTarget(BattleUnit* target, bool assessDanger, bool includeCivs) const;
+
 	/// Checks the alien's TU reservation setting.
 	BattleActionType getReserveMode();
 	/// Assuming we have both a ranged and a melee weapon, we have to select one.
@@ -174,7 +186,7 @@ public:
 	/// Chooses a firing mode for the AI based on expected damage dealt
 	float brutalExtendedFireModeChoice(BattleActionCost &costAuto, BattleActionCost &costSnap, BattleActionCost &costAimed, BattleActionCost &costThrow, BattleActionCost &costHit, bool checkLOF = false, float previousHighScore = 0);
 	/// Scores a firing mode action based on distance to target, accuracy and overall Damage dealt, also supports melee-hits
-	float brutalScoreFiringMode(BattleAction *action, BattleUnit *target, bool checkLOF, Tile* simulationTile = NULL, bool needToHideAfterwards = false, bool checkMayHarmFriends = true);
+	float brutalScoreFiringMode(BattleAction *action, BattleUnit *target, bool checkLOF, bool reactionCheck = false);
 	/// Used as multiplier for the throw-action in brutalScoreFiringMode
 	float brutalExplosiveEfficacy(Position targetPos, BattleUnit *attackingUnit, int radius, bool grenade = false, bool validOnly = false) const;
 	/// An inaccurate simplified check for line of fire from a specific position to a specific target
@@ -236,7 +248,7 @@ public:
 	/// returns how much energy the unit can recover each turn
 	int getEnergyRecovery(BattleUnit* unit);
 	/// returns reachable tile-Ids by a particular unit
-	std::map<Position, int, PositionComparator> getReachableBy(BattleUnit* unit, bool& ranOutOfTUs, bool forceRecalc = false, bool useMaxTUs = false);
+	std::map<Position, int, PositionComparator> getReachableBy(BattleUnit* unit, bool& ranOutOfTUs, bool forceRecalc = false, bool useMaxTUs = false, bool pruneAirTiles = false);
 	/// checks whether it would be possible to see one tile from another
 	bool hasTileSight(Position from, Position to);
 	/// returns the amount of blaster-waypoints to reach a target-positon
@@ -258,11 +270,35 @@ public:
 	/// Gives an estimate of a unit's power-level
 	float getUnitPower(BattleUnit* unit);
 	/// returns a vector of Tiles next to doors
-	std::vector<Tile*> getDoorTiles(const std::vector<PathfindingNode*> nodeVector);
+	std::vector<Tile*> getCorpseTiles(const std::vector<PathfindingNode*> nodeVector);
 	/// tries to pick up weapon and ammo from current tile if it's an upgrade
 	bool improveItemization(float currentItemScore, BattleAction* action);
+	/// scores a set of tiles based on how long ago they were seen
+	int scoreVisibleTiles(const std::set<Tile*>& tileSet);
 	/// prepares a grenade-action to use with validateArcingShot
 	BattleAction* grenadeThrowAction(Position pos);
+	/// how much damage we can inflict to a given enemy
+	float damagePotential(Position pos, BattleUnit* target, int tuTotal, int energyTotal);
+	/// checks if a position is visible to the enemy
+	bool isPositionVisibleToEnemy(Position pos);
+	/// allows or forbids attacking without another movement-logic-check
+	void allowAttack(bool allow);
+};
+
+struct MoveEvaluation
+{
+	int remainingTU;
+	int remainingEnergy;
+	int lastStepCost;
+	float discoverThreat;
+	float walkToDist;
+	float attackPotential;
+	bool IsDirectPeak;
+	int visibleTiles;
+	int bestDirection;
+	float divisiveMod;
+	float multiplicativeMod;
+	float additiveMod;
 };
 
 }

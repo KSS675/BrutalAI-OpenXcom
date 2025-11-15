@@ -578,8 +578,8 @@ public:
 	void resetCurrentAmbienceDelay();
 	/// Play a random ambient sound.
 	void playRandomAmbientSound();
-	// gets ruleset.
-	const Mod *getMod() const;
+	/// Gets ruleset.
+	const Mod *getMod() const { return _rule; }
 	/// gets the list of items we're guaranteed.
 	std::vector<BattleItem*> *getGuaranteedRecoveredItems();
 	/// gets the list of items we MIGHT get.
@@ -675,6 +675,10 @@ public:
 	void updateVisibleTiles();
 	/// Returns if tile is visible to player
 	bool isTileVisible(Tile* sometile);
+	/// Returns if the map has objectives that need to be destroyed
+	bool hasObjectives();
+	/// Returns if the map has an exit-zone
+	bool hasExitZone();
 };
 
 }

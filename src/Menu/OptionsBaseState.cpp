@@ -180,6 +180,8 @@ void OptionsBaseState::restart(OptionsOrigin origin)
 		BattlescapeState *bs = new BattlescapeState;
 		_game->pushState(bs);
 		_game->getSavedGame()->getSavedBattle()->setBattleState(bs);
+		// Try to reactivate the touch buttons
+		bs->toggleTouchButtons(false, true);
 	}
 }
 
@@ -231,9 +233,8 @@ void OptionsBaseState::btnOkClick(Action *)
 	recenter(dX, dY);
 	Options::save();
 	_game->loadLanguages();
-	SDL_SetWindowGrab(_game->getScreen()->getWindow(), (Options::captureMouse)?SDL_TRUE:SDL_FALSE); //Breaks stuff. Hard.
-	CrossPlatform::setSystemUI();
 	_game->getScreen()->resetDisplay();
+	SDL_WM_GrabInput(Options::captureMouse);
 	_game->setVolume(Options::soundVolume, Options::musicVolume, Options::uiVolume);
 	if (Options::reload && _origin == OPT_MENU)
 	{

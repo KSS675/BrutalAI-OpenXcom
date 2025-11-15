@@ -140,6 +140,10 @@ OptionsAdvancedState::OptionsAdvancedState(OptionsOrigin origin) : OptionsBaseSt
 			{
 				_settingsAI[optionInfo.owner()].push_back(optionInfo);
 			}
+			else if (optionInfo.category() == "STR_AUTO")
+			{
+				_settingsAuto[optionInfo.owner()].push_back(optionInfo);
+			}
 		}
 	}
 }
@@ -179,6 +183,8 @@ void OptionsAdvancedState::updateList()
 	_offsetBattleMax = -1;
 	_offsetAIMin = -1;
 	_offsetAIMax = -1;
+	_offsetAutoMin = -1;
+	_offsetAutoMax = -1;
 
 	_lstOptions->clearList();
 
@@ -237,6 +243,21 @@ void OptionsAdvancedState::updateList()
 		addSettings(_settingsAI[idx]);
 		row += _settingsAI[idx].size();
 		_offsetAIMax = row;
+	}
+	if (_settingsAuto[idx].size() > 0)
+	{
+		if (row > -1)
+		{
+			_lstOptions->addRow(2, "", "");
+			row++;
+		}
+		_lstOptions->addRow(2, tr("STR_AUTO").c_str(), "");
+		row++;
+		_offsetAutoMin = row;
+		_lstOptions->setCellColor(_offsetAutoMin, 0, _colorGroup);
+		addSettings(_settingsAuto[idx]);
+		row += _settingsAuto[idx].size();
+		_offsetAutoMax = row;
 	}
 }
 
@@ -301,6 +322,10 @@ OptionInfo *OptionsAdvancedState::getSetting(size_t sel)
 	{
 		return &_settingsAI[idx][selInt - 1 - _offsetAIMin];
 	}
+	else if (selInt > _offsetAutoMin && selInt <= _offsetAutoMax)
+	{
+		return &_settingsAuto[idx][selInt - 1 - _offsetAutoMin];
+	}
 	else
 	{
 		return 0;
@@ -350,7 +375,7 @@ void OptionsAdvancedState::lstOptionsClick(Action *action)
 		{
 			increment *= 10;
 		}
-		else if (i == &Options::oxceResearchScrollSpeedWithCtrl || i == &Options::oxceManufactureScrollSpeedWithCtrl)
+		else if (i == &Options::oxceResearchScrollSpeedWithCtrl || i == &Options::oxceManufactureScrollSpeedWithCtrl || i == &Options::oxceReactionFireThreshold)
 		{
 			increment *= 5;
 		}
@@ -361,20 +386,20 @@ void OptionsAdvancedState::lstOptionsClick(Action *action)
 		*i += increment;
 
 		int min = 0, max = 0;
-		if (i == &Options::aggression)
+		if (i == &Options::aiCheatMode)
 		{
-			min = 0;
-			max = 4;
-		}
-		else if(i == &Options::aiTargetMode)
-		{
-			min = 1;
-			max = 4;
+			min = -1;
+			max = 2;
 		}
 		else if (i == &Options::battleExplosionHeight)
 		{
 			min = 0;
 			max = 3;
+		}
+		else if (i == &Options::shootingSpreadMode)
+		{
+			min = 0;
+			max = 2;
 		}
 		else if (i == &Options::battleRealisticShotDispersion)
 		{
@@ -435,7 +460,7 @@ void OptionsAdvancedState::lstOptionsClick(Action *action)
 			min = 8;
 			max = 80;
 		}
-		else if (i == &Options::oxceWoundedDefendBaseIf) {
+		else if (i == &Options::oxceWoundedDefendBaseIf || i == &Options::oxceReactionFireThreshold) {
 			min = 0;
 			max = 100;
 		}
@@ -478,13 +503,17 @@ void OptionsAdvancedState::lstOptionsClick(Action *action)
 			min = 0;
 			max = 2;
 		}
-#ifdef __ANDROID__
-		else if (i == &Options::maxFrameSkip)
+		else if (i == &Options::preprimeGrenades)
 		{
 			min = 0;
-			max = 5;
+			max = 3;
 		}
-#endif
+		else if (i == &Options::battleThrownSpeed)
+		{
+			min = 0;
+			max = 20;
+		}
+
 		if (*i < min)
 		{
 			*i = max;

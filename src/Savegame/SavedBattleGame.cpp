@@ -1544,10 +1544,12 @@ void SavedBattleGame::endTurn()
 		// update the "number of turns since last spotted" and the number of turns left sniper AI knows about player units
 		for (auto* bu : _units)
 		{
-			if (bu->getTurnsSinceSpotted() < 255)
+			if (bu->isIgnored())
 			{
-				bu->setTurnsSinceSpotted(bu->getTurnsSinceSpotted() +	1);
+				continue;
 			}
+
+			bu->updateTurnsSince();
 			if (_cheating && bu->getFaction() == FACTION_PLAYER && !bu->isOut())
 			{
 				bu->setTurnsSinceSpotted(0);
@@ -1555,11 +1557,6 @@ void SavedBattleGame::endTurn()
 			if (bu->getAIModule())
 			{
 				bu->getAIModule()->reset(); // clean up AI state
-			}
-
-			if (bu->getTurnsLeftSpottedForSnipers() != 0)
-			{
-				bu->setTurnsLeftSpottedForSnipers(bu->getTurnsLeftSpottedForSnipers() - 1);
 			}
 		}
 	}
@@ -1826,6 +1823,9 @@ std::vector<Position> &SavedBattleGame::getStorageSpace()
  */
 void SavedBattleGame::randomizeItemLocations(Tile *t)
 {
+	// remove position of Tile t from the vector (because of potential endless loop)
+	Collections::removeIf(_storageSpace, [&](Position& p) { return p == t->getPosition(); });
+
 	if (!_storageSpace.empty())
 	{
 		for (auto iter = t->getInventory()->begin(); iter != t->getInventory()->end();)
@@ -2585,6 +2585,7 @@ void SavedBattleGame::reviveUnconsciousUnits(bool noTU)
 				if (placeUnitNearPosition(bu, originalPosition, largeUnit))
 				{
 					// recover from unconscious
+					bu->setNotificationShown(0);
 					bu->turn(false); // makes the unit stand up again
 					bu->kneel(false);
 					bu->setAlreadyExploded(false);
@@ -3121,15 +3122,6 @@ void SavedBattleGame::playRandomAmbientSound()
 		int soundIndex = RNG::seedless(0, _ambienceRandom.size() - 1);
 		getMod()->getSoundByDepth(_depth, _ambienceRandom.at(soundIndex))->play(3); // use fixed ambience channel; don't check if previous sound is still playing or not
 	}
-}
-
-/**
- * get ruleset.
- * @return the ruleset of game.
- */
-const Mod *SavedBattleGame::getMod() const
-{
-	return _rule;
 }
 
 /**
@@ -3789,4 +3781,25 @@ void SavedBattleGame::ScriptRegisterUnitAnimations(ScriptParserBase* parser)
 	sbg.addField<&SavedBattleGame::_togglePersonalLightTemp>("isPersonalLightEnabled");
 	sbg.addField<&SavedBattleGame::_toggleNightVisionColorTemp>("getNightVisionColor");
 }
+
+bool SavedBattleGame::hasObjectives()
+{
+	return _objectivesNeeded > 0;
+}
+
+bool SavedBattleGame::hasExitZone()
+{
+	bool hasExitZone = false;
+	for (int i = 0; i < getMapSizeXYZ(); ++i)
+	{
+		Tile* tile = getTile(i);
+		if (tile && tile->getFloorSpecialTileType() == END_POINT)
+		{
+			hasExitZone = true;
+			break;
+		}
+	}
+	return hasExitZone;
+}
+
 }

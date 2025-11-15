@@ -60,7 +60,10 @@ private:
 	bool _reversed;
 	int _vaporColor, _vaporDensity, _vaporProbability;
 	void applyAccuracy(Position origin, Position *target, double accuracy, bool keepRange, bool extendLine);
-public:
+	void applyAccuracyRealistic(Position origin, Position *target, double accuracy, bool keepRange, bool extendLine);
+	Position calculateMissingTrajectoryRA(const Position& origin, const Position* target, BattleUnit* shooterUnit, const BattleUnit* targetUnit, int distanceVoxels, const std::vector<Position>& exposedVoxels);
+	bool shotNeedsProtection(const Position &origin, std::vector<Position>& coveredVoxels, UnitFaction faction, int distanceVoxels);
+  public:
 	/// Creates a new Projectile.
 	Projectile(Mod *mod, SavedBattleGame *save, BattleAction action, Position origin, Position target, BattleItem *ammo);
 	/// Cleans up the Projectile.
@@ -92,6 +95,9 @@ public:
 	bool isReversed() const;
 	/// adds a cloud of particles at the projectile's location
 	void addVaporCloud();
+
+	/// converts Accuracy to Chance to hit
+    static int getHitChance(int distance, int accuracy, const std::vector<int>* lookupTable);
 };
 
 }

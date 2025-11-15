@@ -68,16 +68,19 @@ BattleUnit::BattleUnit(const Mod *mod, Soldier *soldier, int depth, const RuleSt
 	_faction(FACTION_PLAYER), _originalFaction(FACTION_PLAYER), _killedBy(FACTION_PLAYER), _id(0), _tile(0),
 	_lastPos(Position()), _direction(0), _toDirection(0), _directionTurret(0), _toDirectionTurret(0),
 	_verticalDirection(0), _status(STATUS_STANDING), _wantsToSurrender(false), _isSurrendering(false), _hasPanickedLastTurn(false), _walkPhase(0), _fallPhase(0), _kneeled(false), _floating(false),
-	_dontReselect(false), _fire(0), _currentAIState(0), _visible(false),
+	_dontReselect(false), _aiMedikitUsed(false), _fire(0), _currentAIState(0), _visible(false),
 	_exp{ }, _expTmp{ },
-	_motionPoints(0), _scannedTurn(-1), _customMarker(0), _kills(0), _hitByFire(false), _hitByAnything(false), _alreadyExploded(false), _fireMaxHit(0), _smokeMaxHit(0), 
-	_moraleRestored(0), _charging(0), _turnsSinceSpotted(255), _turnsLeftSpottedForSnipers(0),
+	_motionPoints(0), _scannedTurn(-1), _customMarker(0), _kills(0),
+	_hitByFire(false), _hitByAnything(false), _alreadyExploded(false),
+	_fireMaxHit(0), _smokeMaxHit(0),
+	_moraleRestored(0), _notificationShown(0), _charging(0),
 	_turnsSinceSeenByHostile(255), _turnsSinceSeenByNeutral(255), _turnsSinceSeenByPlayer(255),
-	_tileLastSpottedByHostile(-1), _tileLastSpottedByNeutral(-1), _tileLastSpottedByPlayer(-1), _tileLastSpottedForBlindShotByHostile(-1), _tileLastSpottedForBlindShotByNeutral(-1), _tileLastSpottedForBlindShotByPlayer(-1),
+	_tileLastSpottedByHostile(-1), _tileLastSpottedByNeutral(-1), _tileLastSpottedByPlayer(-1),
+	_tileLastSpottedForBlindShotByHostile(-1), _tileLastSpottedForBlindShotByNeutral(-1), _tileLastSpottedForBlindShotByPlayer(-1),
 	_statistics(), _murdererId(0), _mindControllerID(0), _fatalShotSide(SIDE_FRONT), _fatalShotBodyPart(BODYPART_HEAD), _armor(0),
 	_geoscapeSoldier(soldier), _unitRules(0), _rankInt(0), _turretType(-1), _hidingForTurn(false), _floorAbove(false), _respawn(false), _alreadyRespawned(false),
 	_isLeeroyJenkins(false), _summonedPlayerUnit(false), _resummonedFakeCivilian(false), _pickUpWeaponsMoreActively(false), _disableIndicators(false),
-	_capturable(true), _vip(false), _bannedInNextStage(false)
+	_capturable(true), _vip(false), _bannedInNextStage(false), _skillMenuCheck(false)
 {
 	_name = soldier->getName(true);
 	_id = soldier->getId();
@@ -86,7 +89,6 @@ BattleUnit::BattleUnit(const Mod *mod, Soldier *soldier, int depth, const RuleSt
 	_rank = soldier->getRankString();
 	_gender = soldier->getGender();
 	_intelligence = 2;
-	_aggression = soldier->getAggression();
 	_faceDirection = -1;
 	_floorAbove = false;
 	_breathing = false;
@@ -120,8 +122,24 @@ BattleUnit::BattleUnit(const Mod *mod, Soldier *soldier, int depth, const RuleSt
 	deriveSoldierRank();
 
 	_allowAutoCombat = soldier->getAllowAutoCombat();
+	_isLeeroyJenkins = soldier->isLeeroyJenkins();
 
 	updateArmorFromSoldier(mod, soldier, soldier->getArmor(), depth, false, sc);
+
+	// soldier bonus cache was built above in updateArmorFromSoldier(), so we can also calculate this now
+	if (_geoscapeSoldier)
+	{
+		for (auto* skill : _geoscapeSoldier->getRules()->getSkills())
+		{
+			if (_geoscapeSoldier->hasAllRequiredBonusesForSkill(skill)
+				&& (skill->getCost().Time > 0 || skill->getCost().Mana > 0)
+				&& (!skill->isPsiRequired() || getBaseStats()->psiSkill > 0))
+			{
+				_skillMenuCheck = true;
+				break;
+			}
+		}
+	}
 }
 
 /**
@@ -158,13 +176,15 @@ void BattleUnit::updateArmorFromSoldier(const Mod *mod, Soldier *soldier, Armor 
 	int visibilityDarkBonus = 0;
 	int visibilityDayBonus = 0;
 	int psiVision = 0;
-	int heatVision =  0;
+	int bonusVisibilityThroughSmoke =  0;
+	int bonusVisibilityThroughFire = 0;
 	for (const auto* bonusRule : *soldier->getBonuses(nullptr))
 	{
 		visibilityDarkBonus += bonusRule->getVisibilityAtDark();
 		visibilityDayBonus += bonusRule->getVisibilityAtDay();
 		psiVision += bonusRule->getPsiVision();
-		heatVision += bonusRule->getHeatVision();
+		bonusVisibilityThroughSmoke += bonusRule->getVisibilityThroughSmoke();
+		bonusVisibilityThroughFire += bonusRule->getVisibilityThroughFire();
 	}
 	_maxViewDistanceAtDark = _armor->getVisibilityAtDark() ? _armor->getVisibilityAtDark() : 9;
 	_maxViewDistanceAtDark = Clamp(_maxViewDistanceAtDark + visibilityDarkBonus, 1, mod->getMaxViewDistance());
@@ -172,7 +192,8 @@ void BattleUnit::updateArmorFromSoldier(const Mod *mod, Soldier *soldier, Armor 
 	_maxViewDistanceAtDay = _armor->getVisibilityAtDay() ? _armor->getVisibilityAtDay() : mod->getMaxViewDistance();
 	_maxViewDistanceAtDay = Clamp(_maxViewDistanceAtDay + visibilityDayBonus, 1, mod->getMaxViewDistance());
 	_psiVision = _armor->getPsiVision() + psiVision;
-	_heatVision = _armor->getHeatVision() + heatVision;
+	_visibilityThroughSmoke = _armor->getVisibilityThroughSmoke() + bonusVisibilityThroughSmoke;
+	_visibilityThroughFire = _armor->getVisibilityThroughFire() + bonusVisibilityThroughFire;
 
 
 	_maxArmor[SIDE_FRONT] = _armor->getFrontArmor();
@@ -404,19 +425,19 @@ BattleUnit::BattleUnit(const Mod *mod, Unit *unit, UnitFaction faction, int id, 
 	_faction(faction), _originalFaction(faction), _killedBy(faction), _id(id),
 	_tile(0), _lastPos(Position()), _direction(0), _toDirection(0), _directionTurret(0),
 	_toDirectionTurret(0), _verticalDirection(0), _status(STATUS_STANDING), _wantsToSurrender(false), _isSurrendering(false), _hasPanickedLastTurn(false), _walkPhase(0),
-	_fallPhase(0), _kneeled(false), _floating(false), _dontReselect(false), _fire(0), _currentAIState(0),
-	_allowAutoCombat(true), 
-	_visible(false), _exp{ }, _expTmp{ }, 
-	_motionPoints(0), _scannedTurn(-1), _customMarker(0), _kills(0), _hitByFire(false), _hitByAnything(false), _alreadyExploded(false), _fireMaxHit(0),	_smokeMaxHit(0), 
-	_moraleRestored(0), _charging(0), _turnsSinceSpotted(255), _turnsLeftSpottedForSnipers(0), 
-	_turnsSinceSeenByHostile(255), _turnsSinceSeenByNeutral(255),
-	_turnsSinceSeenByPlayer(255), _tileLastSpottedByHostile(-1), _tileLastSpottedByNeutral(-1), _tileLastSpottedByPlayer(-1), 
-	_tileLastSpottedForBlindShotByHostile(-1), _tileLastSpottedForBlindShotByNeutral(-1),	_tileLastSpottedForBlindShotByPlayer(-1), 
-	_statistics(), _murdererId(0), _mindControllerID(0), _fatalShotSide(SIDE_FRONT), 
-	_fatalShotBodyPart(BODYPART_HEAD), _armor(armor),  _geoscapeSoldier(0),	_unitRules(unit), 
-	_rankInt(0), _turretType(-1), _hidingForTurn(false), _respawn(false), _alreadyRespawned(false), 
-	_isLeeroyJenkins(false), _summonedPlayerUnit(false), _resummonedFakeCivilian(false), _pickUpWeaponsMoreActively(false),	_disableIndicators(false), 
-	_vip(false), _bannedInNextStage(false)
+	_fallPhase(0), _kneeled(false), _floating(false), _dontReselect(false), _aiMedikitUsed(false), _fire(0), _currentAIState(0),
+	_allowAutoCombat(true),
+	_visible(false), _exp{ }, _expTmp{ },
+	_motionPoints(0), _scannedTurn(-1), _customMarker(0), _kills(0), _hitByFire(false), _hitByAnything(false), _alreadyExploded(false), _fireMaxHit(0), _smokeMaxHit(0),
+	_moraleRestored(0), _notificationShown(0), _charging(0),
+	_turnsSinceSeenByHostile(255), _turnsSinceSeenByNeutral(255), _turnsSinceSeenByPlayer(255),
+	_tileLastSpottedByHostile(-1), _tileLastSpottedByNeutral(-1), _tileLastSpottedByPlayer(-1),
+	_tileLastSpottedForBlindShotByHostile(-1), _tileLastSpottedForBlindShotByNeutral(-1), _tileLastSpottedForBlindShotByPlayer(-1),
+	_statistics(), _murdererId(0), _mindControllerID(0), _fatalShotSide(SIDE_FRONT),
+	_fatalShotBodyPart(BODYPART_HEAD), _armor(armor), _geoscapeSoldier(0), _unitRules(unit),
+	_rankInt(0), _turretType(-1), _hidingForTurn(false), _respawn(false), _alreadyRespawned(false),
+	_isLeeroyJenkins(false), _summonedPlayerUnit(false), _resummonedFakeCivilian(false), _pickUpWeaponsMoreActively(false), _disableIndicators(false),
+	_vip(false), _bannedInNextStage(false), _skillMenuCheck(false)
 {
 	if (enviro)
 	{
@@ -544,7 +565,8 @@ void BattleUnit::updateArmorFromNonSoldier(const Mod* mod, Armor* newArmor, int 
 	_maxViewDistanceAtDarkSquared = _maxViewDistanceAtDark * _maxViewDistanceAtDark;
 	_maxViewDistanceAtDay = _armor->getVisibilityAtDay() ? _armor->getVisibilityAtDay() : mod->getMaxViewDistance();
 	_psiVision = _armor->getPsiVision();
-	_heatVision =  _armor->getHeatVision();
+	_visibilityThroughSmoke =  _armor->getVisibilityThroughSmoke();
+	_visibilityThroughFire = _armor->getVisibilityThroughFire();
 
 
 	_maxArmor[SIDE_FRONT] = _armor->getFrontArmor();
@@ -649,15 +671,33 @@ void BattleUnit::load(const YAML::YamlNodeReader& node, const Mod *mod, const Sc
 	reader.tryRead("currStats", _stats);
 	reader.tryRead("turretType", _turretType);
 	reader.tryRead("visible", _visible);
-	reader.tryRead("turnsSinceSpotted", _turnsSinceSpotted);
-	reader.tryRead("turnsLeftSpottedForSnipers", _turnsLeftSpottedForSnipers);
-	reader.tryRead("turnsSinceStunned", _turnsSinceStunned);
+
+	reader.tryReadAs<int>("turnsSinceSpotted", _turnsSinceSpotted[FACTION_HOSTILE]);
+	reader.tryReadAs<int>("turnsLeftSpottedForSnipers", _turnsLeftSpottedForSnipers[FACTION_HOSTILE]);
+	reader.tryReadAs<int>("turnsSinceSpottedByXcom", _turnsSinceSpotted[FACTION_PLAYER]);
+	reader.tryReadAs<int>("turnsLeftSpottedForSnipersByXcom", _turnsLeftSpottedForSnipers[FACTION_PLAYER]);
+	reader.tryReadAs<int>("turnsSinceSpottedByCivilian", _turnsSinceSpotted[FACTION_NEUTRAL]);
+	reader.tryReadAs<int>("turnsLeftSpottedForSnipersByCivilian", _turnsLeftSpottedForSnipers[FACTION_NEUTRAL]);
+	reader.tryReadAs<int>("turnsSinceStunned", _turnsSinceStunned);
+	reader.tryReadAs<int>("turnsSinceSeenByHostile", _turnsSinceSeenByHostile);
+	reader.tryReadAs<int>("turnsSinceSeenByNeutral", _turnsSinceSeenByNeutral);
+	reader.tryReadAs<int>("turnsSinceSeenByPlayer", _turnsSinceSeenByPlayer);
+
+	reader.tryReadAs<int>("tileLastSpottedByHostile", _tileLastSpottedByHostile);
+	reader.tryReadAs<int>("tileLastSpottedByNeutral", _tileLastSpottedByNeutral);
+	reader.tryReadAs<int>("tileLastSpottedByPlayer", _tileLastSpottedByPlayer);
+	reader.tryReadAs<int>("tileLastSpottedForBlindShotByHostile", _tileLastSpottedForBlindShotByHostile);
+	reader.tryReadAs<int>("tileLastSpottedForBlindShotByNeutral", _tileLastSpottedForBlindShotByNeutral);
+	reader.tryReadAs<int>("tileLastSpottedForBlindShotByPlayer", _tileLastSpottedForBlindShotByPlayer);
+
 	reader.tryRead("rankInt", _rankInt);
 	reader.tryRead("rankIntUnified", _rankIntUnified);
 	reader.tryRead("moraleRestored", _moraleRestored);
+	reader.tryRead("notificationShown", _notificationShown);
 	reader.tryRead("killedBy", _killedBy);
 	reader.tryRead("kills", _kills);
 	reader.tryRead("dontReselect", _dontReselect);
+	reader.tryRead("aiMedikitUsed", _aiMedikitUsed);
 
 	// Custom additions
 	reader.tryRead("isBrutal", _isBrutal);
@@ -710,6 +750,8 @@ void BattleUnit::load(const YAML::YamlNodeReader& node, const Mod *mod, const Sc
 
 	reader.tryRead("allowAutoCombat", _allowAutoCombat);
 	reader.tryRead("aggression", _aggression);
+
+	reader.tryRead("hasPanickedLastTurn", _hasPanickedLastTurn);
 
 	_scriptValues.load(reader, shared);
 }
@@ -780,10 +822,20 @@ void BattleUnit::save(YAML::YamlNodeWriter writer, const ScriptGlobal *shared) c
 	writer.write("tileLastSpottedForBlindShotByHostile", _tileLastSpottedForBlindShotByHostile);
 	writer.write("tileLastSpottedForBlindShotByNeutral", _tileLastSpottedForBlindShotByNeutral);
 	writer.write("tileLastSpottedForBlindShotByPlayer", _tileLastSpottedForBlindShotByPlayer);
+
+	writer.writeAs<int>("turnsSinceSpotted", _turnsSinceSpotted[FACTION_HOSTILE]);
+	writer.writeAs<int>("turnsLeftSpottedForSnipers", _turnsLeftSpottedForSnipers[FACTION_HOSTILE]);
+	writer.tryWriteAs<int>("turnsSinceSpottedByXcom", _turnsSinceSpotted[FACTION_PLAYER], 255);
+	writer.tryWriteAs<int>("turnsLeftSpottedForSnipersByXcom", _turnsLeftSpottedForSnipers[FACTION_PLAYER], 0);
+	writer.tryWriteAs<int>("turnsSinceSpottedByCivilian", _turnsSinceSpotted[FACTION_NEUTRAL], 255);
+	writer.tryWriteAs<int>("turnsLeftSpottedForSnipersByCivilian", _turnsLeftSpottedForSnipers[FACTION_NEUTRAL], 0);
+	writer.writeAs<int>("turnsSinceStunned", _turnsSinceStunned);
+
 	writer.write("rankInt", _rankInt);
 	writer.write("rankIntUnified", _rankIntUnified);
 	writer.write("moraleRestored", _moraleRestored);
-
+	if (_notificationShown > 0)
+		writer.write("notificationShown", _notificationShown);
 	if (getAIModule())
 		getAIModule()->save(writer["AI"]);
 	writer.write("killedBy", _killedBy); // does not have a default value, must always be saved
@@ -793,6 +845,8 @@ void BattleUnit::save(YAML::YamlNodeWriter writer, const ScriptGlobal *shared) c
 		writer.write("kills", _kills);
 	if (_faction == FACTION_PLAYER && _dontReselect)
 		writer.write("dontReselect", _dontReselect);
+	if (_aiMedikitUsed)
+		writer.write("aiMedikitUsed", _aiMedikitUsed);
 	if (_previousOwner)
 		writer.write("previousOwner", _previousOwner->getId());
 	if (_spawnUnit)
@@ -873,6 +927,8 @@ void BattleUnit::save(YAML::YamlNodeWriter writer, const ScriptGlobal *shared) c
 	// Adding missing entries from HEAD using new style
 	writer.write("allowAutoCombat", _allowAutoCombat);
 	writer.write("aggression", _aggression);
+
+	writer.write("hasPanickedLastTurn", _hasPanickedLastTurn);
 
 	// Save script values using the new writer method
 	_scriptValues.save(writer, shared);
@@ -1707,7 +1763,7 @@ int BattleUnit::damage(Position relative, int damage, const RuleDamageType *type
 
 	if (!type->IgnoreDirection)
 	{
-		if (relative == Position(0, 0, 0))
+		if (relative.x == 0 && relative.y == 0 && relative.z <= 0)
 		{
 			side = SIDE_UNDER;
 		}
@@ -1863,7 +1919,12 @@ int BattleUnit::damage(Position relative, int damage, const RuleDamageType *type
 
 		if (type->ArmorEffectiveness > 0.0f)
 		{
-			damage -= getArmor(side) * type->ArmorEffectiveness;
+			int armorValue = getArmor(side);
+			if (type->ArmorIgnore != 0)
+			{
+				armorValue = std::clamp(armorValue - type->ArmorIgnore, 0, armorValue);
+			}
+			damage -= armorValue * type->ArmorEffectiveness;
 		}
 
 		if (damage > 0)
@@ -1942,6 +2003,8 @@ int BattleUnit::damage(Position relative, int damage, const RuleDamageType *type
 		constexpr int arg_selfDestructChance = 3;
 		constexpr int arg_moraleLoss = 4;
 		constexpr int arg_fire = 5;
+		constexpr int arg_attackerTurnsSinceSpotted = 6;
+		constexpr int arg_attackerTurnsLeftSpottedForSnipers = 7;
 
 		ModScript::DamageSpecialUnit::Output args { };
 
@@ -1994,6 +2057,39 @@ int BattleUnit::damage(Position relative, int damage, const RuleDamageType *type
 			{
 				// bullet/ammo
 				std::get<arg_fire>(args.data) = 0;
+			}
+		}
+
+		// AI direct hit tracking
+		std::get<arg_attackerTurnsSinceSpotted>(args.data) = 255;
+		std::get<arg_attackerTurnsLeftSpottedForSnipers>(args.data) = 0;
+		if (attack.attacker)
+		{
+			std::get<arg_attackerTurnsSinceSpotted>(args.data) = attack.attacker->getTurnsSinceSpottedByFaction(getFaction());
+			std::get<arg_attackerTurnsLeftSpottedForSnipers>(args.data) = attack.attacker->getTurnsLeftSpottedForSnipersByFaction(getFaction());
+
+			if (getFaction() != attack.attacker->getFaction() &&
+				(attack.type == BA_AIMEDSHOT || attack.type == BA_SNAPSHOT || attack.type == BA_AUTOSHOT) &&
+				attack.damage_item != nullptr &&
+				(relative == Position(0,0,0) || (attack.damage_item->getRules()->getExplosionRadius(attack) == 0)))
+			{
+				AIModule *ai = getAIModule();
+				if (ai != 0)
+				{
+					ai->setWasHitBy(attack.attacker);
+				}
+
+				std::get<arg_attackerTurnsSinceSpotted>(args.data) = 0;
+				if (Mod::EXTENDED_SPOT_ON_HIT_FOR_SNIPING > 0)
+				{
+					// 0 = don't spot
+					// 1 = spot only if the victim doesn't die or pass out
+					// 2 = always spot
+					if (Mod::EXTENDED_SPOT_ON_HIT_FOR_SNIPING > 1 || !this->isOutThresholdExceed())
+					{
+						std::get<arg_attackerTurnsLeftSpottedForSnipers>(args.data) = std::max(std::get<arg_attackerTurnsLeftSpottedForSnipers>(args.data), getSpotterDuration());
+					}
+				}
 			}
 		}
 
@@ -2053,6 +2149,12 @@ int BattleUnit::damage(Position relative, int damage, const RuleDamageType *type
 			setAlreadyExploded(true);
 			Position p = getPosition().toVoxel();
 			save->getBattleGame()->statePushNext(new ExplosionBState(save->getBattleGame(), p, BattleActionAttack{ BA_SELF_DESTRUCT, this, selfDestructItem, selfDestructItem }, 0));
+		}
+
+		if (attack.attacker)
+		{
+			attack.attacker->setTurnsSinceSpottedByFaction(getFaction(), std::get<arg_attackerTurnsSinceSpotted>(args.data));
+			attack.attacker->setTurnsLeftSpottedForSnipersByFaction(getFaction(), std::get<arg_attackerTurnsLeftSpottedForSnipers>(args.data));
 		}
 	}
 
@@ -2251,7 +2353,7 @@ RuleItemUseCost BattleUnit::getActionTUs(BattleActionType actionType, const Rule
 	RuleItemUseCost cost;
 	if (item != 0)
 	{
-		RuleItemUseCost flat = item->getFlatUse();
+		RuleItemUseFlat flat = item->getFlatUse();
 		switch (actionType)
 		{
 			case BA_PRIME:
@@ -2301,7 +2403,7 @@ RuleItemUseCost BattleUnit::getActionTUs(BattleActionType actionType, const Rule
 	return cost;
 }
 
-void BattleUnit::applyPercentages(RuleItemUseCost &cost, const RuleItemUseCost &flat) const
+void BattleUnit::applyPercentages(RuleItemUseCost &cost, const RuleItemUseFlat &flat) const
 {
 	{
 		// if it's a percentage, apply it to unit TUs
@@ -2495,12 +2597,12 @@ void BattleUnit::clearVisibleUnits()
  */
 bool BattleUnit::addToVisibleTiles(Tile *tile)
 {
+	tile->setLastExplored(getFaction());
 	//Only add once, otherwise we're going to mess up the visibility value and make trouble for the AI (if sneaky).
 	if (_visibleTilesLookup.insert(tile).second)
 	{
 		if (getFaction() == FACTION_PLAYER)
 			tile->setVisible(1);
-		tile->setLastExplored(getFaction());
 		_visibleTiles.push_back(tile);
 		return true;
 	}
@@ -2924,6 +3026,7 @@ void BattleUnit::prepareNewTurn(bool fullProcess)
 
 	_hitByFire = false;
 	_dontReselect = false;
+	_aiMedikitUsed = false;
 	_motionPoints = 0;
 	setWantToEndTurn(false);
 
@@ -3110,6 +3213,15 @@ std::vector<BattleItem*> *BattleUnit::getInventory()
 }
 
 /**
+ * Get the pointer to the vector of inventory items.
+ * @return pointer to vector.
+ */
+const std::vector<BattleItem*> *BattleUnit::getInventory() const
+{
+	return &_inventory;
+}
+
+/**
  * Fit item into inventory slot.
  * @param slot Slot to fit.
  * @param item Item to fit.
@@ -3164,7 +3276,7 @@ bool BattleUnit::fitItemToInventory(const RuleInventory *slot, BattleItem *item,
  * @param allowUnloadedWeapons allow equip of weapons without ammo.
  * @return if the item was placed or not.
  */
-bool BattleUnit::addItem(BattleItem *item, const Mod *mod, bool allowSecondClip, bool allowAutoLoadout, bool allowUnloadedWeapons, bool allowInfinite)
+bool BattleUnit::addItem(BattleItem *item, const Mod *mod, bool allowSecondClip, bool allowAutoLoadout, bool allowUnloadedWeapons, bool allowInfinite, bool testMode)
 {
 	RuleInventory *rightHand = mod->getInventoryRightHand();
 	RuleInventory *leftHand = mod->getInventoryLeftHand();
@@ -3233,7 +3345,7 @@ bool BattleUnit::addItem(BattleItem *item, const Mod *mod, bool allowSecondClip,
 			}
 		}
 		// or in the left/right hand
-		if (!placed && (fitItemToInventory(rightHand, item) || fitItemToInventory(leftHand, item)))
+		if (!placed && (fitItemToInventory(rightHand, item, testMode) || fitItemToInventory(leftHand, item, testMode)))
 		{
 			placed = true;
 			item->setXCOMProperty(getFaction() == FACTION_PLAYER && !isSummonedPlayerUnit());
@@ -3272,12 +3384,12 @@ bool BattleUnit::addItem(BattleItem *item, const Mod *mod, bool allowSecondClip,
 			if (getBaseStats()->strength * 0.66 >= weight) // weight is always considered 0 for aliens
 			{
 				// C1 - vanilla right-hand main weapon (and OXCE left-hand second main weapon)
-				if (fitItemToInventory(rightHand, item))
+				if (fitItemToInventory(rightHand, item, testMode))
 				{
 					placed = true;
 				}
 				bool allowTwoMainWeapons = (getFaction() != FACTION_PLAYER) || _armor->getAllowTwoMainWeapons();
-				if (!placed && allowTwoMainWeapons && fitItemToInventory(leftHand, item))
+				if (!placed && allowTwoMainWeapons && fitItemToInventory(leftHand, item, testMode))
 				{
 					placed = true;
 				}
@@ -3328,7 +3440,7 @@ bool BattleUnit::addItem(BattleItem *item, const Mod *mod, bool allowSecondClip,
 		if (rule->getBattleType() == BT_PSIAMP && getFaction() == FACTION_HOSTILE)
 		{
 			// C2 - vanilla left-hand psi-amp for hostiles
-			if (fitItemToInventory(rightHand, item) || fitItemToInventory(leftHand, item))
+			if (fitItemToInventory(rightHand, item, testMode) || fitItemToInventory(leftHand, item, testMode))
 			{
 				placed = true;
 			}
@@ -3345,7 +3457,7 @@ bool BattleUnit::addItem(BattleItem *item, const Mod *mod, bool allowSecondClip,
 						const RuleInventory* slot = item->getRules()->getDefaultInventorySlot();
 						if (slot->getType() != INV_GROUND)
 						{
-							placed = fitItemToInventory(slot, item);
+							placed = fitItemToInventory(slot, item, testMode);
 							if (placed)
 							{
 								break;
@@ -3364,7 +3476,7 @@ bool BattleUnit::addItem(BattleItem *item, const Mod *mod, bool allowSecondClip,
 							RuleInventory* slot = mod->getInventory(s);
 							if (slot->getType() != INV_GROUND)
 							{
-								placed = fitItemToInventory(slot, item);
+								placed = fitItemToInventory(slot, item, testMode);
 								if (placed)
 								{
 									break;
@@ -3398,7 +3510,7 @@ bool BattleUnit::addItem(BattleItem *item, const Mod *mod, bool allowSecondClip,
 					{
 						if (cheapestInventoryToMoveToHand->getType() == INV_SLOT)
 						{
-							placed = fitItemToInventory(cheapestInventoryToMoveToHand, item);
+							placed = fitItemToInventory(cheapestInventoryToMoveToHand, item, testMode);
 						}
 					}
 				}
@@ -3411,7 +3523,7 @@ bool BattleUnit::addItem(BattleItem *item, const Mod *mod, bool allowSecondClip,
 						RuleInventory* slot = mod->getInventory(s);
 						if (slot->getType() == INV_SLOT)
 						{
-							placed = fitItemToInventory(slot, item);
+							placed = fitItemToInventory(slot, item, testMode);
 							if (placed)
 							{
 								break;
@@ -3436,6 +3548,13 @@ bool BattleUnit::addItem(BattleItem *item, const Mod *mod, bool allowSecondClip,
 void BattleUnit::think(BattleAction *action)
 {
 	reloadAmmo();
+	if (!_aiMedikitUsed)
+	{
+		// only perform once per turn
+		_aiMedikitUsed = true;
+		while (_currentAIState->medikit_think(BMT_HEAL)) {}
+		while (_currentAIState->medikit_think(BMT_STIMULANT)) {}
+	}
 	_currentAIState->think(action);
 }
 
@@ -3480,6 +3599,39 @@ AIModule *BattleUnit::getAIModule() const
 {
 	return _currentAIState;
 }
+
+/**
+ * Gets weight value as hostile unit.
+ */
+AIAttackWeight BattleUnit::getAITargetWeightAsHostile(const Mod *mod) const
+{
+	return _armor->getAITargetWeightAsHostile().getValueOr(mod->getAITargetWeightAsHostile());
+}
+
+/**
+ * Gets weight value as civilian unit when consider by aliens.
+ */
+AIAttackWeight BattleUnit::getAITargetWeightAsHostileCivilians(const Mod *mod) const
+{
+	return _armor->getAITargetWeightAsHostileCivilians().getValueOr(mod->getAITargetWeightAsHostileCivilians());
+}
+
+/**
+ * Gets weight value as same faction unit.
+ */
+AIAttackWeight BattleUnit::getAITargetWeightAsFriendly(const Mod *mod) const
+{
+	return _armor->getAITargetWeightAsFriendly().getValueOr(mod->getAITargetWeightAsFriendly());
+}
+
+/**
+ * Gets weight value as neutral unit (xcom to civ or vice versa).
+ */
+AIAttackWeight BattleUnit::getAITargetWeightAsNeutral(const Mod *mod) const
+{
+	return _armor->getAITargetWeightAsNeutral().getValueOr(mod->getAITargetWeightAsNeutral());
+}
+
 
 /**
  * Set whether this unit is visible.
@@ -3805,6 +3957,7 @@ BattleItem *BattleUnit::getMainHandWeapon(bool quickest, bool needammo, bool rea
  */
 BattleItem *BattleUnit::getGrenadeFromBelt(const SavedBattleGame* battle) const
 {
+	BattleItem *best = nullptr;
 	for (auto* bi : _inventory)
 	{
 		if (isBrutal() && bi->getRules()->getDamageType()->RandomType == DRT_NONE)
@@ -3813,11 +3966,12 @@ BattleItem *BattleUnit::getGrenadeFromBelt(const SavedBattleGame* battle) const
 		{
 			if (battle->getTurn() >= bi->getRules()->getAIUseDelay(battle->getMod()))
 			{
-				return bi;
+				if (!best || bi->getRules()->getPower() > best->getRules()->getPower())
+					best = bi;
 			}
 		}
 	}
-	return 0;
+	return best;
 }
 
 /**
@@ -4674,8 +4828,6 @@ int BattleUnit::getIntelligence() const
  */
 int BattleUnit::getAggression() const
 {
-	if (getGeoscapeSoldier())
-		return getGeoscapeSoldier()->getAggression();
 	return _aggression;
 }
 
@@ -4686,8 +4838,6 @@ int BattleUnit::getAggression() const
 void BattleUnit::setAggression(int aggression)
 {
 	_aggression = aggression;
-	if (getGeoscapeSoldier())
-		getGeoscapeSoldier()->setAggression(aggression);
 }
 
 int BattleUnit::getMaxViewDistance(int baseVisibility, int nerf, int buff) const
@@ -4970,13 +5120,86 @@ int BattleUnit::getCarriedWeight(BattleItem *draggingItem) const
 	return std::max(0,weight);
 }
 
+
+
+/**
+ * Set default state on unit.
+ */
+void BattleUnit::resetTurnsSince()
+{
+	for (auto& since : _turnsSinceSpotted)
+	{
+		since = 255;
+	}
+	for (auto& left : _turnsLeftSpottedForSnipers)
+	{
+		left = 0;
+	}
+	//_turnsSinceStunned is reset elsewhere
+}
+
+
+/**
+ * Update counters on unit.
+ */
+void BattleUnit::updateTurnsSince()
+{
+	for (auto& since : _turnsSinceSpotted)
+	{
+		since = Clamp(since + 1, 0, 255);
+	}
+	for (auto& left : _turnsLeftSpottedForSnipers)
+	{
+		left = Clamp(left - 1, 0, 255);
+	}
+	//_turnsSinceStunned is updated elsewhere
+}
+
+
+
+namespace
+{
+
+/// safe setter of value in array
+template<int I>
+void setUint8Array(Uint8 (&arr)[I], int offset, int value)
+{
+	if (0 <= offset && offset < I)
+	{
+		arr[offset] = Clamp(value, 0, 255);
+	}
+}
+
+/// safe getter of value in array
+template<int I>
+int getUint8Array(const Uint8 (&arr)[I], int offset)
+{
+	if (0 <= offset && offset < I)
+	{
+		return arr[offset];
+	}
+
+	return 0;
+}
+
+} // namespace
+
+
 /**
  * Set how long since this unit was last exposed.
  * @param turns number of turns
  */
 void BattleUnit::setTurnsSinceSpotted (int turns)
 {
-	_turnsSinceSpotted = turns;
+	_turnsSinceSpotted[FACTION_HOSTILE] = turns;
+}
+
+/**
+ * Set how many turns this unit will be exposed for. For specific faction.
+ */
+void BattleUnit::setTurnsSinceSpottedByFaction(UnitFaction faction, int turns)
+{
+	setUint8Array(_turnsSinceSpotted, faction, turns);
 }
 
 /**
@@ -4985,7 +5208,15 @@ void BattleUnit::setTurnsSinceSpotted (int turns)
  */
 int BattleUnit::getTurnsSinceSpotted() const
 {
-	return _turnsSinceSpotted;
+	return _turnsSinceSpotted[FACTION_HOSTILE];
+}
+
+/**
+ * Set how many turns this unit will be exposed for. For specific faction.
+ */
+int BattleUnit::getTurnsSinceSpottedByFaction(UnitFaction faction) const
+{
+	return getUint8Array(_turnsSinceSpotted, faction);
 }
 
 /**
@@ -4994,7 +5225,15 @@ int BattleUnit::getTurnsSinceSpotted() const
  */
 void BattleUnit::setTurnsLeftSpottedForSnipers (int turns)
 {
-	_turnsLeftSpottedForSnipers = turns;
+	_turnsLeftSpottedForSnipers[FACTION_HOSTILE] = turns;
+}
+
+/**
+ * Set how many turns left snipers know about this target. For specific faction.
+ */
+void BattleUnit::setTurnsLeftSpottedForSnipersByFaction (UnitFaction faction, int turns)
+{
+	setUint8Array(_turnsLeftSpottedForSnipers, faction, turns);
 }
 
 /**
@@ -5003,7 +5242,15 @@ void BattleUnit::setTurnsLeftSpottedForSnipers (int turns)
  */
 int BattleUnit::getTurnsLeftSpottedForSnipers() const
 {
-	return _turnsLeftSpottedForSnipers;
+	return _turnsLeftSpottedForSnipers[FACTION_HOSTILE];
+}
+
+/**
+ * Get how many turns left snipers know about this target. For specific faction.
+ */
+int BattleUnit::getTurnsLeftSpottedForSnipersByFaction(UnitFaction faction) const
+{
+	return getUint8Array(_turnsLeftSpottedForSnipers, faction);
 }
 
 /**
@@ -5065,18 +5312,22 @@ void BattleUnit::setTileLastSpotted(int index, UnitFaction faction, bool forBlin
 	}
 }
 
-void BattleUnit::updateEnemyKnowledge(int index, bool clue)
+void BattleUnit::updateEnemyKnowledge(int index, bool clue, bool door)
 {
 	setTileLastSpotted(index, FACTION_HOSTILE);
 	setTileLastSpotted(index, FACTION_HOSTILE, true);
-	setTileLastSpotted(index, FACTION_PLAYER);
-	setTileLastSpotted(index, FACTION_PLAYER, true);
+	if (!door)
+	{
+		setTileLastSpotted(index, FACTION_PLAYER);
+		setTileLastSpotted(index, FACTION_PLAYER, true);
+	}
 	setTileLastSpotted(index, FACTION_NEUTRAL);
 	setTileLastSpotted(index, FACTION_NEUTRAL, true);
 	if (!clue || Options::updateTurnsSinceSeenByClue)
 	{
 		setTurnsSinceSeen(0, FACTION_HOSTILE);
-		setTurnsSinceSeen(0, FACTION_PLAYER);
+		if (!door)
+			setTurnsSinceSeen(0, FACTION_PLAYER);
 		setTurnsSinceSeen(0, FACTION_NEUTRAL);
 	}
 }
@@ -5989,6 +6240,8 @@ bool BattleUnit::isAvoidMines() const
 		return false;
 	if (isLeeroyJenkins())
 		return false;
+	if (getOriginalFaction() != getFaction())
+		return false;
 	if (Options::avoidMines || getFaction() == FACTION_PLAYER)
 		return true;
 	return false;
@@ -6001,7 +6254,7 @@ bool BattleUnit::isCheatOnMovement()
 {
 	bool cheat = false;
 	if (getFaction() == FACTION_HOSTILE)
-		cheat = Options::cheatOnMovement;
+		cheat = aiCheatMode() > 0;
 	if (_unitRules && _unitRules->isCheatOnMovement())
 		cheat = true;
 	return cheat;
@@ -6010,16 +6263,12 @@ bool BattleUnit::isCheatOnMovement()
 /**
  * Returns whether the unit should be controlled by brutalAI
  */
-int BattleUnit::aiTargetMode()
+int BattleUnit::aiCheatMode()
 {
 	// Player and Neutral-AI are locked to mode 3
 	if (getFaction() != FACTION_HOSTILE)
-		return 3;
-	int targetMode = Options::aiTargetMode;
-	if (_unitRules && _unitRules->aiTargetMode() > 0)
-		targetMode = std::max(targetMode, _unitRules->aiTargetMode());
-	targetMode = std::clamp(targetMode, 1, 4);
-	return targetMode;
+		return 0;
+	return Options::aiCheatMode;
 }
 
 /**
@@ -6090,26 +6339,14 @@ bool BattleUnit::wasMaxTusOfUpdate()
 	return _maxTUsWhenReachableWasUpdated;
 }
 
-bool BattleUnit::isLeeroyJenkins(bool ignoreBrutal) const
+bool BattleUnit::isLeeroyJenkins() const
 {
-	if (!isBrutal() || ignoreBrutal)
-		return _isLeeroyJenkins;
-	else if (Options::aggression >= 1)
-		return _isLeeroyJenkins;
-	else
-		return false;
+	return _isLeeroyJenkins;
 }
 
-float BattleUnit::getAggressiveness() const
+float BattleUnit::getAggressiveness(std::string missionType) const
 {
-	if (getFaction() == FACTION_PLAYER)
-		return getAggression();
-	float aggressiveness = 0;
-	if (Options::aggression == 4)
-		aggressiveness = getAggression();
-	else
-		return Options::aggression;
-	return aggressiveness;
+	return getAggression();
 }
 
 ////////////////////////////////////////////////////////////
@@ -6588,7 +6825,7 @@ void addStunScript(BattleUnit *bu, int val)
 	}
 }
 
-template<int BattleUnit::*StatCurr, int Min, int Max>
+template<auto StatCurr, int Min, int Max>
 void setBaseStatRangeScript(BattleUnit *bu, int val)
 {
 	if (bu)
@@ -6596,6 +6833,16 @@ void setBaseStatRangeScript(BattleUnit *bu, int val)
 		(bu->*StatCurr) = Clamp(val, Min, Max);
 	}
 }
+
+template<auto StatCurr, int Offset, int Min, int Max>
+void setBaseStatRangeArrayScript(BattleUnit *bu, int val)
+{
+	if (bu)
+	{
+		(bu->*StatCurr)[Offset] = Clamp(val, Min, Max);
+	}
+}
+
 
 template<int BattleUnit::*StatCurr, int Min, int Max>
 void addBaseStatRangeScript(BattleUnit *bu, int val)
@@ -6755,6 +7002,22 @@ void getInventoryItemScript(BattleUnit* bu, BattleItem *&foundItem, const RuleIt
 	}
 }
 
+void getInventoryItemConstScript(const BattleUnit* bu, const BattleItem *&foundItem, const RuleItem *itemRules)
+{
+	foundItem = nullptr;
+	if (bu)
+	{
+		for (auto* i : *bu->getInventory())
+		{
+			if (i->getRules() == itemRules)
+			{
+				foundItem = i;
+				break;
+			}
+		}
+	}
+}
+
 void getInventoryItemScript1(BattleUnit* bu, BattleItem *&foundItem, const RuleInventory *inv, const RuleItem *itemRules)
 {
 	foundItem = nullptr;
@@ -6771,7 +7034,39 @@ void getInventoryItemScript1(BattleUnit* bu, BattleItem *&foundItem, const RuleI
 	}
 }
 
+void getInventoryItemConstScript1(const BattleUnit* bu, const BattleItem *&foundItem, const RuleInventory *inv, const RuleItem *itemRules)
+{
+	foundItem = nullptr;
+	if (bu)
+	{
+		for (auto* i : *bu->getInventory())
+		{
+			if (i->getSlot() == inv && i->getRules() == itemRules)
+			{
+				foundItem = i;
+				break;
+			}
+		}
+	}
+}
+
 void getInventoryItemScript2(BattleUnit* bu, BattleItem *&foundItem, const RuleInventory *inv)
+{
+	foundItem = nullptr;
+	if (bu)
+	{
+		for (auto* i : *bu->getInventory())
+		{
+			if (i->getSlot() == inv)
+			{
+				foundItem = i;
+				break;
+			}
+		}
+	}
+}
+
+void getInventoryItemConstScript2(const BattleUnit* bu, const BattleItem *&foundItem, const RuleInventory *inv)
 {
 	foundItem = nullptr;
 	if (bu)
@@ -6804,7 +7099,22 @@ void getListScript(BattleUnit* bu, BattleItem *&foundItem, int i)
 
 //TODO: move it to script bindings
 template<auto Member>
-void getListSizeScript(BattleUnit* bu, int& i)
+void getListConstScript(const BattleUnit* bu, const BattleItem *&foundItem, int i)
+{
+	foundItem = nullptr;
+	if (bu)
+	{
+		auto& ptr = (bu->*Member);
+		if ((size_t)i < std::size(ptr))
+		{
+			foundItem = ptr[i];
+		}
+	}
+}
+
+//TODO: move it to script bindings
+template<auto Member>
+void getListSizeScript(const BattleUnit* bu, int& i)
 {
 	i = 0;
 	if (bu)
@@ -6815,7 +7125,7 @@ void getListSizeScript(BattleUnit* bu, int& i)
 }
 
 template<auto Member>
-void getListSizeHackScript(BattleUnit* bu, int& i)
+void getListSizeHackScript(const BattleUnit* bu, int& i)
 {
 	i = 0;
 	if (bu)
@@ -6830,6 +7140,11 @@ void getListSizeHackScript(BattleUnit* bu, int& i)
 }
 
 bool filterItemScript(BattleUnit* unit, BattleItem* item)
+{
+	return item;
+}
+
+bool filterItemConstScript(const BattleUnit* unit, const BattleItem* item)
 {
 	return item;
 }
@@ -6929,7 +7244,8 @@ void BattleUnit::ScriptRegister(ScriptParserBase* parser)
 	bu.add<&BattleUnit::getMaxViewDistanceAtDay>("getMaxViewDistanceAtDay", "get maximum visibility distance in tiles to another unit at day");
 	bu.add<&BattleUnit::getMaxViewDistance>("getMaxViewDistance", "calculate maximum visibility distance consider camouflage, first arg is base visibility, second arg is cammo reduction, third arg is anti-cammo boost");
 	bu.add<&BattleUnit::getPsiVision>("getPsiVision");
-	bu.add<&BattleUnit::getHeatVision>("getHeatVision");
+	bu.add<&BattleUnit::getVisibilityThroughSmoke>("getHeatVision", "getVisibilityThroughSmoke");
+	bu.add<&BattleUnit::getVisibilityThroughFire>("getVisibilityThroughFire", "getVisibilityThroughFire");
 
 	bu.add<&setSpawnUnitScript>("setSpawnUnit", "set type of zombie will be spawn from current unit, it will reset everything to default (hostile & instant)");
 	bu.add<&getSpawnUnitScript>("getSpawnUnit", "get type of zombie will be spawn from current unit");
@@ -7030,23 +7346,41 @@ void BattleUnit::ScriptRegister(ScriptParserBase* parser)
 	bu.add<&getInventoryItemScript>("getInventoryItem");
 	bu.add<&getInventoryItemScript1>("getInventoryItem");
 	bu.add<&getInventoryItemScript2>("getInventoryItem");
+	bu.add<&getInventoryItemConstScript>("getInventoryItem");
+	bu.add<&getInventoryItemConstScript1>("getInventoryItem");
+	bu.add<&getInventoryItemConstScript2>("getInventoryItem");
 	bu.add<&getListSizeScript<&BattleUnit::_inventory>>("getInventoryItem.size");
 	bu.add<&getListScript<&BattleUnit::_inventory>>("getInventoryItem");
+	bu.add<&getListConstScript<&BattleUnit::_inventory>>("getInventoryItem");
 	bu.addList<&filterItemScript, &BattleUnit::_inventory>("getInventoryItem");
+	bu.addList<&filterItemConstScript, &BattleUnit::_inventory>("getInventoryItem");
 	bu.add<&getListSizeHackScript<&BattleUnit::_specWeapon>>("getSpecialItem.size");
 	bu.add<&getListScript<&BattleUnit::_specWeapon>>("getSpecialItem");
+	bu.add<&getListConstScript<&BattleUnit::_specWeapon>>("getSpecialItem");
 	bu.addList<&filterItemScript, &BattleUnit::_specWeapon>("getSpecialItem");
+	bu.addList<&filterItemConstScript, &BattleUnit::_specWeapon>("getSpecialItem");
 
 	bu.add<&getPositionXScript>("getPosition.getX");
 	bu.add<&getPositionYScript>("getPosition.getY");
 	bu.add<&getPositionZScript>("getPosition.getZ");
 	bu.add<&BattleUnit::getPosition>("getPosition");
+
+
 	bu.add<&BattleUnit::getTurnsSinceSpotted>("getTurnsSinceSpotted");
-	bu.add<&setBaseStatRangeScript<&BattleUnit::_turnsSinceSpotted, 0, 255>>("setTurnsSinceSpotted");
+	bu.add<&setBaseStatRangeArrayScript<&BattleUnit::_turnsSinceSpotted, FACTION_HOSTILE, 0, 255>>("setTurnsSinceSpotted");
+
+	bu.add<&BattleUnit::getTurnsSinceSpottedByFaction>("getTurnsSinceSpottedByFaction");
+	bu.add<&BattleUnit::setTurnsSinceSpottedByFaction>("setTurnsSinceSpottedByFaction");
+
 	bu.add<&BattleUnit::getTurnsLeftSpottedForSnipers>("getTurnsLeftSpottedForSnipers");
-	bu.add<&setBaseStatRangeScript<&BattleUnit::_turnsLeftSpottedForSnipers, 0, 255>>("setTurnsLeftSpottedForSnipers");
+	bu.add<&setBaseStatRangeArrayScript<&BattleUnit::_turnsLeftSpottedForSnipers, FACTION_HOSTILE, 0, 255>>("setTurnsLeftSpottedForSnipers");
+
+	bu.add<&BattleUnit::getTurnsLeftSpottedForSnipersByFaction>("getTurnsLeftSpottedForSnipersByFaction");
+	bu.add<&BattleUnit::setTurnsLeftSpottedForSnipersByFaction>("setTTurnsLeftSpottedForSnipersByFaction");
+
 	bu.addField<&BattleUnit::_turnsSinceStunned>("getTurnsSinceStunned");
 	bu.add<&setBaseStatRangeScript<&BattleUnit::_turnsSinceStunned, 0, 255>>("setTurnsSinceStunned");
+
 
 	bu.addScriptValue<BindBase::OnlyGet, &BattleUnit::_armor, &Armor::getScriptValuesRaw>();
 	bu.addScriptValue<&BattleUnit::_scriptValues>();
@@ -7281,6 +7615,20 @@ ModScript::VisibilityUnitParser::VisibilityUnitParser(ScriptGlobal* shared, cons
 }
 
 /**
+ * Constructor of visibility script parser.
+ */
+ModScript::AiCalculateTargetWeightParser::AiCalculateTargetWeightParser(ScriptGlobal* shared, const std::string& name, Mod* mod) : ScriptParserEvents{ shared, name,
+	"current_target_weight",
+	"default_target_weight",
+
+	"ai_unit", "target_unit", "battle_game" }
+{
+	BindBase b { this };
+
+	b.addCustomPtr<const Mod>("rules", mod);
+}
+
+/**
  * Init all required data in script using object data.
  */
 void BattleUnit::ScriptFill(ScriptWorkerBlit* w, const BattleUnit* unit, const SavedBattleGame* save, int body_part, int anim_frame, int shade, int burn)
@@ -7322,6 +7670,8 @@ ModScript::DamageSpecialUnitParser::DamageSpecialUnitParser(ScriptGlobal* shared
 	"self_destruct_chance",
 	"morale_loss",
 	"fire",
+	"attacker_turns_since_spotted",
+	"attacker_turns_left_spotted_for_snipers",
 
 	"unit", "damaging_item", "weapon_item", "attacker",
 	"battle_game", "skill", "health_damage", "orig_power", "part", "side", "damaging_type", "battle_action", }

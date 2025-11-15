@@ -315,6 +315,8 @@ void ProjectileFlyBState::init()
 		// Store this target voxel.
 		Tile *targetTile = _parent->getSave()->getTile(_action.target);
 		Position originVoxel = _parent->getTileEngine()->getOriginVoxel(_action, _parent->getSave()->getTile(_origin));
+		bool foundLoF = false;
+
 		if (targetTile->getUnit() &&
 			((_unit->getFaction() != FACTION_PLAYER) ||
 			targetTile->getUnit()->getVisible()))
@@ -324,28 +326,55 @@ void ProjectileFlyBState::init()
 				// don't shoot at yourself but shoot at the floor
 				_targetVoxel = _action.target.toVoxel() + Position(8, 8, 0);
 			}
-			else
+			else if (Options::battleRealisticAccuracy)
 			{
-				if ((Options::battleRealisticAccuracy && !Options::oxceEnableOffCentreShooting)
-					|| !Options::battleRealisticAccuracy)
-						_action.relativeOrigin = BattleActionOrigin::CENTRE;
+				std::vector<Position> exposedVoxels;
+				OpenXcom::BattleActionOrigin bestOriginType;
+				Position bestTargetPos;
+				size_t bestExposedCount = 0;
 
-				// TEMPORARY SOLUTION !!!
-				// Temporarily, _action.relativeOrigin is set inside Map::drawTerrain()
-				// so canTargetUnit() here starts to look for LoF from already selected origin (left, right or center)
-				// It prevents the bug where checkVoxelExposure selects best direction but canTargetUnit() here uses its own
-				// In that case, shot goes from wrong origin to a voxel, exposed to other origin, and can hit the obstacle
-				// albeit successfull hit is rolled
+				_parent->getTileEngine()->checkVoxelExposure(&originVoxel, targetTile, _unit, isPlayer, &exposedVoxels, nullptr, !isPlayer);
 
-				// This could be fixed in case checkVoxelExposure will replace canTargetUnit() here. Someday.
+				if (!exposedVoxels.empty())
+				{
+					foundLoF = true;
+					bestExposedCount = exposedVoxels.size();
+					bestOriginType = BattleActionOrigin::CENTRE;
+					bestTargetPos = exposedVoxels.at(0);
+				}
 
-				bool foundLoF = false;
+				if (Options::oxceEnableOffCentreShooting) // Determine which shooting position is the best
+				{
+					for (auto& rel_pos : { BattleActionOrigin::LEFT, BattleActionOrigin::RIGHT })
+					{
+						exposedVoxels.clear();
+						_action.relativeOrigin = rel_pos;
+						originVoxel = _parent->getTileEngine()->getOriginVoxel(_action, _parent->getSave()->getTile(_origin));
+						_parent->getTileEngine()->checkVoxelExposure(&originVoxel, targetTile, _unit, isPlayer, &exposedVoxels, nullptr, !isPlayer);
+
+						if (exposedVoxels.size() <=  bestExposedCount) continue;
+
+						foundLoF = true;
+						bestExposedCount = exposedVoxels.size();
+						bestOriginType = rel_pos;
+						bestTargetPos = exposedVoxels.at(0);
+					}
+				}
+
+				if (foundLoF) // Store the results
+				{
+					_targetVoxel = bestTargetPos;
+					_action.relativeOrigin = bestOriginType;
+				}
+			}
+			else // Classic Accuracy
+			{
 				foundLoF = _parent->getTileEngine()->canTargetUnit(&originVoxel, targetTile, &_targetVoxel, _unit, isPlayer);
 
 				if (!foundLoF && Options::oxceEnableOffCentreShooting)
 				{
 					// If we can't target from the standard shooting position, try a bit left and right from the centre.
-					for (auto& rel_pos : { BattleActionOrigin::CENTRE, BattleActionOrigin::LEFT, BattleActionOrigin::RIGHT })
+					for (auto& rel_pos : { BattleActionOrigin::LEFT, BattleActionOrigin::RIGHT })
 					{
 						_action.relativeOrigin = rel_pos;
 						originVoxel = _parent->getTileEngine()->getOriginVoxel(_action, _parent->getSave()->getTile(_origin));
@@ -356,17 +385,17 @@ void ProjectileFlyBState::init()
 						}
 					}
 				}
+			}
 
-				if (!foundLoF)
+			if (!foundLoF)
+			{
+				// Failed to find LOF
+				_action.relativeOrigin = BattleActionOrigin::CENTRE; // reset to the normal origin
+
+				_targetVoxel = TileEngine::invalid.toVoxel(); // out of bounds, even after voxel to tile calculation.
+				if (isPlayer)
 				{
-					// Failed to find LOF
-					_action.relativeOrigin = BattleActionOrigin::CENTRE; // reset to the normal origin
-
-					_targetVoxel = TileEngine::invalid.toVoxel(); // out of bounds, even after voxel to tile calculation.
-					if (isPlayer)
-					{
-						forceEnableObstacles = true;
-					}
+					forceEnableObstacles = true;
 				}
 			}
 		}
@@ -584,18 +613,6 @@ bool ProjectileFlyBState::createNewProjectile()
 void ProjectileFlyBState::deinit()
 {
 	_parent->getMap()->setFollowProjectile(true); // turn back on when done shooting
-
-	if (!_victims.empty())
-	{
-		for (auto* victim : _victims)
-		{
-			// is the spotter still standing after ALL shots?
-			if (!victim->isOut() && !victim->isOutThresholdExceed())
-			{
-				_unit->setTurnsLeftSpottedForSnipers(std::max(victim->getSpotterDuration(), _unit->getTurnsLeftSpottedForSnipers()));
-			}
-		}
-	}
 }
 
 /**
@@ -890,19 +907,11 @@ bool ProjectileFlyBState::validThrowRange(BattleAction *action, Position origin,
 	int ydiff = action->target.y - action->actor->getPosition().y;
 	int realDistanceSq = (xdiff * xdiff) + (ydiff * ydiff);
 
-	if (depth > 0)
+	int compatibilityDistanceSq = action->actor->distance3dToPositionSq(action->target); // 3d distance for compatibility with Map::drawTerrain()
+	if (action->weapon->getRules()->isOutOfThrowRange(compatibilityDistanceSq, depth))
 	{
-		if (action->weapon->getRules()->getUnderwaterThrowRange() > 0)
-		{
-			return realDistanceSq <= action->weapon->getRules()->getUnderwaterThrowRangeSq();
-		}
-	}
-	else
-	{
-		if (action->weapon->getRules()->getThrowRange() > 0)
-		{
-			return realDistanceSq <= action->weapon->getRules()->getThrowRangeSq();
-		}
+		// if out of item's throw range, stop... no need to check weight- and strength-based range
+		return false;
 	}
 
 	double realDistance = sqrt((double)realDistanceSq);
@@ -988,27 +997,18 @@ void ProjectileFlyBState::projectileHitUnit(Position pos)
 			int distanceSq = _action.actor->distance3dToUnitSq(victim);
 			int distance = (int)std::ceil(sqrt(float(distanceSq)));
 			int accuracy = BattleUnit::getFiringAccuracy(BattleActionAttack::GetAferShoot(_action, _ammo), _parent->getMod());
-			// code from Map::drawTerrain(), where the crosshair accuracy is calculated
-			if (Options::battleUFOExtenderAccuracy)
+
 			{
-				const RuleItem* weapon = _action.weapon->getRules();
-				int upperLimit = weapon->getAimRange();
-				int lowerLimit = weapon->getMinRange();
-				if (_action.type == BA_AUTOSHOT)
-				{
-					upperLimit = weapon->getAutoRange();
-				}
-				else if (_action.type == BA_SNAPSHOT)
-				{
-					upperLimit = weapon->getSnapRange();
-				}
+				int upperLimit, lowerLimit;
+				int dropoff = _action.weapon->getRules()->calculateLimits(upperLimit, lowerLimit, _parent->getSave()->getDepth(), _action.type);
+
 				if (distance > upperLimit)
 				{
-					accuracy -= (distance - upperLimit) * weapon->getDropoff();
+					accuracy -= (distance - upperLimit) * dropoff;
 				}
 				else if (distance < lowerLimit)
 				{
-					accuracy -= (lowerLimit - distance) * weapon->getDropoff();
+					accuracy -= (lowerLimit - distance) * dropoff;
 				}
 				if (accuracy < 0)
 				{
@@ -1026,38 +1026,18 @@ void ProjectileFlyBState::projectileHitUnit(Position pos)
 				_unit->getStatistics()->lowAccuracyHitCounter++;
 			}
 		}
-		if (victim->getFaction() == FACTION_HOSTILE)
-		{
-			AIModule *ai = victim->getAIModule();
-			if (ai != 0)
-			{
-				ai->setWasHitBy(_unit);
-				_unit->setTurnsSinceSpotted(0);
-				if (Mod::EXTENDED_SPOT_ON_HIT_FOR_SNIPING > 0)
-				{
-					// 0 = don't spot
-					// 1 = spot only if the victim doesn't die or pass out
-					// 2 = always spot
-					if (Mod::EXTENDED_SPOT_ON_HIT_FOR_SNIPING > 1)
-					{
-						_unit->setTurnsLeftSpottedForSnipers(std::max(victim->getSpotterDuration(), _unit->getTurnsLeftSpottedForSnipers()));
-					}
-					else
-					{
-						// decide later
-						_victims.insert(victim);
-					}
-				}
-			}
-		}
+		int turnBefore = victim->getTurnsSinceSeen(_unit->getFaction());
 		victim->updateEnemyKnowledge(_parent->getSave()->getTileIndex(victim->getPosition()), true);
-		for (BattleUnit *unit : *(_parent->getSave()->getUnits()))
+		if (turnBefore != victim->getTurnsSinceSeen(_unit->getFaction()))
 		{
-			if (unit->isOut())
-				continue;
-			if (!unit->getAIModule() || !unit->isBrutal())
-				continue;
-			unit->checkForReactivation(_parent->getSave());
+			for (BattleUnit* unit : *(_parent->getSave()->getUnits()))
+			{
+				if (unit->isOut())
+					continue;
+				if (!unit->getAIModule() || !unit->isBrutal())
+					continue;
+				unit->checkForReactivation(_parent->getSave());
+			}
 		}
 	}
 }

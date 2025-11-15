@@ -1460,6 +1460,15 @@ bool TileEngine::calculateUnitsInFOV(BattleUnit* unit, const Position eventPos, 
 								bu->setTurnsLeftSpottedForSnipers(std::max(unit->getSpotterDuration(), bu->getTurnsLeftSpottedForSnipers())); // defaults to 0 = no information given to snipers
 							}
 
+							if (unit->getFaction() != bu->getFaction())
+							{
+								bu->setTurnsSinceSpottedByFaction(unit->getFaction(), 0);
+								bu->setTurnsLeftSpottedForSnipersByFaction(
+									unit->getFaction(),
+									std::max(unit->getSpotterDuration(), bu->getTurnsLeftSpottedForSnipersByFaction(unit->getFaction()))
+								); // defaults to 0 = no information given to snipers
+							}
+
 							x = y = sizeOther; //If a unit's tile is visible there's no need to check the others: break the loops.
 						}
 						else
@@ -1915,10 +1924,9 @@ bool TileEngine::visible(BattleUnit *currentUnit, Tile *tile)
 		}
 	}
 
-	// heat vision should be blind by looking directly through fire
-	int fireDensityFactor = Clamp(currentUnit->getHeatVision(), 0, 100);
 	// heat vision 100% = smoke effectiveness 0%
-	int smokeDensityFactor = 100 - fireDensityFactor;
+	int smokeDensityFactor = 100 - Clamp(currentUnit->getVisibilityThroughSmoke(), 0, 100);
+	int fireDensityFactor = 100 - Clamp(currentUnit->getVisibilityThroughFire(), 0, 100);
 
 	if (unitSeen)
 	{
@@ -1927,8 +1935,9 @@ bool TileEngine::visible(BattleUnit *currentUnit, Tile *tile)
 		// 3  - coefficient of calculation (see getTrajectoryDataHelper).
 		// 20 - maximum view distance in vanilla Xcom.
 		// 100 - % for smokeDensityFactor.
+		// 16 - for voxel scale calculation.
 		// Even if MaxViewDistance will be increased via ruleset, smoke will keep effect.
-		int visibilityQuality = visibleDistanceMaxVoxel - visibleDistanceVoxels - ((densityOfSmoke - densityOfSmokeNearUnit / 2) * smokeDensityFactor + (densityOfFire - densityOfFireeNearUnit / 2) * fireDensityFactor) * visibleDistanceUnitMaxTile/(3 * 20 * 100);
+		int visibilityQuality = visibleDistanceMaxVoxel - visibleDistanceVoxels - ((densityOfSmoke - densityOfSmokeNearUnit / 2) * smokeDensityFactor + (densityOfFire - densityOfFireeNearUnit / 2) * fireDensityFactor) * visibleDistanceMaxVoxel/(3 * 20 * 100 * 16);
 		ModScript::VisibilityUnit::Output arg{ visibilityQuality, visibilityQuality, ScriptTag<BattleUnitVisibility>::getNullTag() };
 		ModScript::VisibilityUnit::Worker worker{ currentUnit, tile->getUnit(), tile, visibleDistanceVoxels, visibleDistanceMaxVoxel, visibleDistanceUnitMaxTile, densityOfSmoke, densityOfFire, densityOfSmokeNearUnit, densityOfFireeNearUnit };
 		worker.execute(currentUnit->getArmor()->getScript<ModScript::VisibilityUnit>(), arg);
@@ -2095,9 +2104,8 @@ bool TileEngine::isTileInLOS(BattleAction *action, Tile *tile, bool drawing)
 	originVoxel = getSightOriginVoxel(currentUnit);
 
 	// heat vision 100% = smoke effectiveness 0%
-	int smokeDensityFactor = 100 - currentUnit->getArmor()->getHeatVision();
-	// heat vision should be blind by looking directly through fire
-	int fireDensityFactor = currentUnit->getArmor()->getHeatVision();
+	int smokeDensityFactor = 100 - Clamp(currentUnit->getVisibilityThroughSmoke(), 0, 100);
+	int fireDensityFactor = 100 - Clamp(currentUnit->getVisibilityThroughFire(), 0, 100);
 
 	if (seen)
 	{
@@ -2106,8 +2114,9 @@ bool TileEngine::isTileInLOS(BattleAction *action, Tile *tile, bool drawing)
 		// 3  - coefficient of calculation (see getTrajectoryDataHelper).
 		// 20 - maximum view distance in vanilla Xcom.
 		// 100 - % for smokeDensityFactor.
+		// 16 - for voxel scale calculation.
 		// Even if MaxViewDistance will be increased via ruleset, smoke will keep effect.
-		int visibilityQuality = visibleDistanceMaxVoxel - visibleDistanceVoxels - ((densityOfSmoke - densityOfSmokeNearUnit / 2) * smokeDensityFactor + (densityOfFire - densityOfFireeNearUnit / 2) * fireDensityFactor) * visibleDistanceUnitMaxTile/(3 * 20 * 100);
+		int visibilityQuality = visibleDistanceMaxVoxel - visibleDistanceVoxels - ((densityOfSmoke - densityOfSmokeNearUnit / 2) * smokeDensityFactor + (densityOfFire - densityOfFireeNearUnit / 2) * fireDensityFactor) * visibleDistanceMaxVoxel/(3 * 20 * 100 * 16);
 		ModScript::VisibilityUnit::Output arg{ visibilityQuality, visibilityQuality, ScriptTag<BattleUnitVisibility>::getNullTag() };
 		ModScript::VisibilityUnit::Worker worker{ currentUnit, /*targetUnit*/ nullptr, tile, visibleDistanceVoxels, visibleDistanceMaxVoxel, visibleDistanceUnitMaxTile, densityOfSmoke, densityOfFire, densityOfSmokeNearUnit, densityOfFireeNearUnit };
 		worker.execute(currentUnit->getArmor()->getScript<ModScript::VisibilityUnit>(), arg);
@@ -2124,7 +2133,8 @@ bool TileEngine::isTileInLOS(BattleAction *action, Tile *tile, bool drawing)
  * @param exposedVoxels [Optional] Array of positions of exposed voxels (function fills it)
  * @return Degree of exposure (as percent).
  */
-double TileEngine::checkVoxelExposure(Position *originVoxel, Tile *tile, BattleUnit *excludeUnit, bool isDebug, std::vector<Position> *exposedVoxels, bool isSimpleMode)
+double TileEngine::checkVoxelExposure(Position *originVoxel, Tile *tile, BattleUnit *excludeUnit, bool isDebug,
+                                    std::vector<Position> *exposedVoxels, std::vector<Position> *coveredVoxels, bool isSimpleMode)
 {
 	isDebug = isDebug && _save->getDebugMode();
 	if (excludeUnit && excludeUnit->isAIControlled()) isSimpleMode = true;
@@ -2200,6 +2210,7 @@ double TileEngine::checkVoxelExposure(Position *originVoxel, Tile *tile, BattleU
 	// Reduce number of checks in simple mode
 	int simplifyDivider = unitRadius;
 	if (targetSize == 2) simplifyDivider = 4;
+    int peekDistanceSq = _save->getMod()->getAccuracyModConfig()->peekDistance * _save->getMod()->getAccuracyModConfig()->peekDistance;
 
 	for (int height = targetMaxHeight; height >= bottomHeight; height -= 2)
 	{
@@ -2221,7 +2232,14 @@ double TileEngine::checkVoxelExposure(Position *originVoxel, Tile *tile, BattleU
 
 			_trajectory.clear();
 			int test = calculateLineVoxel(*originVoxel, scanVoxel, false, &_trajectory, excludeUnit);
-			if (test == V_UNIT)
+
+            bool peekBehindCover = false;
+            if (!_trajectory.empty())
+            {
+                peekBehindCover = (Position::distanceSq(*originVoxel, _trajectory.at(0)) <= peekDistanceSq);
+            }
+
+            if (test == V_UNIT)
 			{
 				int impactX = _trajectory.at(0).x;
 				int impactY = _trajectory.at(0).y;
@@ -2236,12 +2254,18 @@ double TileEngine::checkVoxelExposure(Position *originVoxel, Tile *tile, BattleU
 					scanLine += '#';
 				}
 				else
-					scanLine += symbols[ test+1 ]; // overlapped by another unit
+                {
+                    if (peekBehindCover) --total;
+                    else if (coveredVoxels) coveredVoxels->emplace_back(_trajectory.at(0));
+                    scanLine += symbols[ test+1 ]; // overlapped by another unit
+                }
 			}
 
 			else
 			{
-				if ( test == V_EMPTY )	--total;
+				if ( test == V_EMPTY || peekBehindCover ) --total;
+                else if (coveredVoxels) coveredVoxels->emplace_back(_trajectory.at(0)); // Target can't be covered by void
+
 				scanLine += symbols[ test+1 ]; // V_EMPTY = -1
 			}
 		}
@@ -2282,6 +2306,13 @@ double TileEngine::checkVoxelExposure(Position *originVoxel, Tile *tile, BattleU
 
 			_trajectory.clear();
 			int test = calculateLineVoxel(*originVoxel, scanVoxel, false, &_trajectory, excludeUnit);
+
+            bool peekBehindCover = false;
+            if (!_trajectory.empty())
+            {
+                peekBehindCover = (Position::distanceSq(*originVoxel, _trajectory.at(0)) <= peekDistanceSq);
+            }
+
 			if (test == V_UNIT)
 			{
 				int impactX = _trajectory.at(0).x;
@@ -2295,7 +2326,17 @@ double TileEngine::checkVoxelExposure(Position *originVoxel, Tile *tile, BattleU
 					exposure += 0.05;
 					if (exposedVoxels) exposedVoxels->emplace_back(scanVoxel);
 				}
+                else
+                {
+                    if (peekBehindCover) --total;
+                    else if (coveredVoxels) coveredVoxels->emplace_back(_trajectory.at(0));
+                }
 			}
+            else if (test != V_EMPTY)
+            {
+                if ( peekBehindCover ) --total;
+                else if (coveredVoxels) coveredVoxels->emplace_back(_trajectory.at(0)); // Target can't be covered by void
+            }
 		}
 	}
 
@@ -2937,27 +2978,112 @@ std::vector<TileEngine::ReactionScore> TileEngine::getSpottingUnits(BattleUnit* 
 					ReactionScore rs = determineReactionType(bu, unit);
 					if (rs.attackType != BA_NONE)
 					{
-						if (rs.attackType == BA_SNAPSHOT && Options::battleUFOExtenderAccuracy)
+						int reactionFireThreshold = _save->getBattleGame()->getMod()->getReactionFireThreshold(bu->getFaction());
+						if (reactionFireThreshold > 0)
 						{
 							BattleItem *weapon = rs.weapon;
 							int accuracy = BattleUnit::getFiringAccuracy(BattleActionAttack::GetBeforeShoot(rs.attackType, rs.unit, weapon), _save->getBattleGame()->getMod());
 							int distanceSq = unit->distance3dToUnitSq(bu);
 							int distance = (int)std::ceil(sqrt(float(distanceSq)));
 
-							int upperLimit = weapon->getRules()->getSnapRange();
-							int lowerLimit = weapon->getRules()->getMinRange();
-							if (distance > upperLimit)
+                            if (!Options::battleRealisticAccuracy)
 							{
-								accuracy -= (distance - upperLimit) * weapon->getRules()->getDropoff();
-							}
-							else if (distance < lowerLimit)
-							{
-								accuracy -= (lowerLimit - distance) * weapon->getRules()->getDropoff();
+								int upperLimit, lowerLimit;
+								int dropoff = weapon->getRules()->calculateLimits(upperLimit, lowerLimit, _save->getDepth(), rs.attackType);
+
+								if (distance > upperLimit)
+								{
+									accuracy -= (distance - upperLimit) * dropoff;
+								}
+								else if (distance < lowerLimit)
+								{
+									accuracy -= (lowerLimit - distance) * dropoff;
+								}
 							}
 
-							bool outOfRange = weapon->getRules()->isOutOfRange(distanceSq);
+                            bool outOfRange = weapon->getRules()->isOutOfRange(distanceSq);
+                            int targetSize = unit->getArmor()->getSize();
 
-							if (accuracy > _save->getBattleGame()->getMod()->getMinReactionAccuracy() && !outOfRange)
+							if (Options::battleRealisticAccuracy)
+							{
+                                double accuracyFloat = static_cast<double>(accuracy);
+
+								const Mod::AccuracyModConfig *AccuracyMod = _save->getMod()->getAccuracyModConfig();
+								int distanceVoxels = 0;
+								std::vector<Position> exposedVoxels;
+
+                                int maxVoxels = 0;
+                                double maxExposure = 0.0;
+                                auto targetTile = tile;
+                                exposedVoxels.reserve((1 + BattleUnit::BIG_MAX_RADIUS * 2) * TileEngine::voxelTileSize.z / 2);
+
+                                // This is needed inside getOriginVoxel() to get direction
+                                falseAction.target = unit->getPosition();
+
+                                Position selectedOrigin = TileEngine::invalid;
+                                BattleActionOrigin selectedOriginType = BattleActionOrigin::CENTRE;
+                                std::vector<BattleActionOrigin> originTypes;
+                                originTypes.push_back(BattleActionOrigin::CENTRE);
+                                if (Options::oxceEnableOffCentreShooting)
+                                {
+                                    originTypes.push_back(BattleActionOrigin::LEFT);
+                                    originTypes.push_back(BattleActionOrigin::RIGHT);
+                                }
+
+                                // Find shooting point with best target's exposure
+                                for (const auto &relPos : originTypes)
+                                {
+                                    exposedVoxels.clear();
+                                    falseAction.relativeOrigin = relPos;
+                                    Position origin = _save->getTileEngine()->getOriginVoxel(falseAction, bu->getTile());
+                                    double exposure = _save->getTileEngine()->checkVoxelExposure(&origin, targetTile, bu, false, &exposedVoxels, nullptr, false);
+
+                                    // Save default values for center origin
+                                    // Overwrite if better results are found for shifted origins
+                                    if (relPos == BattleActionOrigin::CENTRE || (int)exposedVoxels.size() > maxVoxels)
+                                    {
+                                        selectedOrigin = origin;
+                                        selectedOriginType = relPos;
+                                        maxVoxels = exposedVoxels.size();
+                                        maxExposure = exposure;
+                                    }
+                                }
+                                falseAction.relativeOrigin = selectedOriginType;
+                                distanceVoxels = unit->distance3dToPositionPrecise(selectedOrigin) - bu->getRadiusVoxels();
+								double distanceFloat = (double)distanceVoxels / Position::TileXY;
+
+								int upperLimit, lowerLimit;
+                                int dropoff = weapon->getRules()->calculateLimits(upperLimit, lowerLimit, _save->getDepth(), rs.attackType);
+
+								if (distanceFloat > upperLimit)
+								{
+									accuracyFloat -= (distanceFloat - upperLimit) * dropoff;
+								}
+								else if (distanceFloat < lowerLimit)
+								{
+									accuracyFloat -= (lowerLimit - distanceFloat) * dropoff;
+								}
+
+								bool coverHasEffect = AccuracyMod->coverEfficiency[(int)Options::battleRealisticCoverEfficiency];
+								if (maxVoxels > 0 && coverHasEffect)
+								{
+									// Apply the exposure
+									double coverEfficiencyCoeff = AccuracyMod->coverEfficiency[(int)Options::battleRealisticCoverEfficiency] / 100.0;
+									accuracyFloat = accuracyFloat * coverEfficiencyCoeff * maxExposure + accuracyFloat * (1.0 - coverEfficiencyCoeff);
+								}
+
+								accuracy = round(accuracyFloat);
+								distance = round(distanceFloat);
+								if (distance < 1) distance = 1;
+
+								accuracy = Projectile::getHitChance(distance, accuracy, _save->getMod()->getHitChancesTable(targetSize));
+							}
+                            else if (Options::useChanceToHit)
+							{
+								accuracy = Projectile::getHitChance(distance, accuracy, _save->getMod()->getHitChancesTable( targetSize ));
+							}
+
+							if (accuracy >= reactionFireThreshold && !outOfRange)
 							{
 								spotters.push_back(rs);
 							}
@@ -3193,7 +3319,7 @@ bool TileEngine::tryReaction(ReactionScore *reaction, BattleUnit *target, const 
 				// for some reason the unit had no AI routine assigned..
 				action.actor->setAIModule(new AIModule(_save, action.actor, 0));
 			}
-			if (action.actor->getAIModule()->brutalScoreFiringMode(&action, target, true, nullptr, false, false) <= 0)
+			if (action.actor->getAIModule()->brutalScoreFiringMode(&action, target, true, true) <= 0)
 				return false;
 
 			worker.execute(target->getArmor()->getScript<ModScript::ReactionUnitAction>(), arg);
@@ -3731,7 +3857,12 @@ void TileEngine::explode(BattleActionAttack attack, Position center, int power, 
 						toRemove.clear();
 						if (bu)
 						{
-							if (
+							if (dest->getPosition() == centetTile)
+							{
+								// direct hit, similar to ground zero but AI will remember attacker, done for compatibility
+								hitUnit(attack, bu, Position(0, 0, 0), damage, type, rangeAtack);
+							}
+							else if (
 									(
 										Position::distance2dSq(dest->getPosition(), centetTile) < 4
 										&& dest->getPosition().z == centetTile.z
@@ -3740,7 +3871,7 @@ void TileEngine::explode(BattleActionAttack attack, Position center, int power, 
 								)
 							{
 								// ground zero effect is in effect, or unit is above explosion
-								hitUnit(attack, bu, Position(0, 0, 0), damage, type, rangeAtack);
+								hitUnit(attack, bu, Position(0, 0, -1), damage, type, rangeAtack);
 							}
 							else
 							{
@@ -3943,6 +4074,8 @@ bool TileEngine::detonate(Tile* tile, int explosive)
 			{
 				fireProof = tiles[i]->getFlammability(currentpart);
 				fuel = tiles[i]->getFuel(currentpart) + 1;
+				if (tiles[i]->getMapData(currentpart)->getArmor() == 0)
+					break;
 			}
 		}
 		// set tile on fire
@@ -4540,6 +4673,7 @@ int TileEngine::unitOpensDoor(BattleUnit *unit, bool rClick, int dir)
 				// Update FOV through the doorway.
 				calculateFOV(doorCentre, doorsOpened, true, true);
 				resetVisibilityCache();
+				unit->updateEnemyKnowledge(_save->getTileIndex(unit->getPosition()), true, true);
 			}
 			else return 4;
 		}
@@ -4632,7 +4766,7 @@ int TileEngine::closeUfoDoors()
  * @param trajectory A vector of positions in which the trajectory is stored.
  * @return 0 or some value greater than .
  */
-int TileEngine::calculateLineTile(Position origin, Position target, std::vector<Position> &trajectory)
+int TileEngine::calculateLineTile(Position origin, Position target, std::vector<Position> &trajectory, int minLightBlock)
 {
 	Position lastPoint = origin;
 	int steps = 0;
@@ -4654,7 +4788,22 @@ int TileEngine::calculateLineTile(Position origin, Position target, std::vector<
 					result = false;
 				}
 			}
-
+			if (minLightBlock > 0 && result)
+			{
+				MapData* objectMapData = _save->getTile(lastPoint)  ? _save->getTile(lastPoint)->getMapData(O_OBJECT) : nullptr;
+				if (objectMapData && objectMapData->getLightBlock() < minLightBlock)
+				{
+					result = false;
+				}
+				else
+				{
+					MapData* objectMapData = _save->getTile(point) ? _save->getTile(point)->getMapData(O_OBJECT) : nullptr;
+					if (objectMapData && objectMapData->getLightBlock() < minLightBlock)
+					{
+						result = false;
+					}
+				}
+			}
 			steps++;
 			lastPoint = point;
 			return result;
@@ -5616,6 +5765,7 @@ void TileEngine::itemMoveInventory(Tile *t, BattleUnit *unit, BattleItem *item, 
 						_save->getTileEngine()->setDangerZone(p, radius, dropper);
 					}
 				}
+				dropper->updateEnemyKnowledge(_save->getTileIndex(p), true, false);
 			}
 			item->moveToOwner(nullptr);
 			t->addItem(item, slot);
@@ -6529,7 +6679,7 @@ bool TileEngine::isNearDoor(Tile* tile)
 	return false;
 }
 
-std::set<Tile*> TileEngine::visibleTilesFrom(BattleUnit* unit, Position pos, int direction, bool onlyNew)
+std::set<Tile*> TileEngine::visibleTilesFrom(BattleUnit* unit, Position pos, int direction, bool onlyNew, bool ignoreAirTiles)
 {
 	std::set<Tile*> visibleFrom;
 
@@ -6590,6 +6740,12 @@ std::set<Tile*> TileEngine::visibleTilesFrom(BattleUnit* unit, Position pos, int
 
 					if (_save->getTile(posTest)) // inside map?
 					{
+						if (ignoreAirTiles)
+						{
+							// skip air tiles
+							if (_save->getTile(posTest)->hasNoFloor())
+								continue;
+						}
 						// this sets tiles to discovered if they are in LOS - tile visibility is not calculated in voxelspace but in tilespace
 						// large units have "4 pair of eyes"
 						int size = unit->getArmor()->getSize();

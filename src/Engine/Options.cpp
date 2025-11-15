@@ -236,7 +236,6 @@ void createAdvancedOptionsOXC()
 	_info.push_back(OptionInfo(OPTION_OXC, "vSyncForOpenGL", &vSyncForOpenGL, true, "STR_VSYNC_FOR_OPENGL", "STR_GENERAL")); // exposed in OXCE
 #endif
 	_info.push_back(OptionInfo(OPTION_OXC, "geoDragScrollInvert", &geoDragScrollInvert, false, "STR_DRAGSCROLLINVERT", "STR_GEOSCAPE")); // true drags away from the cursor, false drags towards (like a grab)
-	_info.push_back(OptionInfo(OPTION_OXC, "aggressiveRetaliation", &aggressiveRetaliation, false, "STR_AGGRESSIVERETALIATION", "STR_GEOSCAPE"));
 	_info.push_back(OptionInfo(OPTION_OXC, "customInitialBase", &customInitialBase, false, "STR_CUSTOMINITIALBASE", "STR_GEOSCAPE"));
 	_info.push_back(OptionInfo(OPTION_OXC, "allowBuildingQueue", &allowBuildingQueue, false, "STR_ALLOWBUILDINGQUEUE", "STR_GEOSCAPE"));
 	_info.push_back(OptionInfo(OPTION_OXC, "craftLaunchAlways", &craftLaunchAlways, false, "STR_CRAFTLAUNCHALWAYS", "STR_GEOSCAPE"));
@@ -426,7 +425,8 @@ void createOptionsOXCE()
 
 	_info.push_back(OptionInfo(OPTION_OXCE, "oxceGeoscapeDebugLogMaxEntries", &oxceGeoscapeDebugLogMaxEntries, 1000, "", "HIDDEN"));
 	_info.push_back(OptionInfo(OPTION_OXCE, "oxceGeoSlowdownFactor", &oxceGeoSlowdownFactor, 1, "", "HIDDEN"));
-	_info.push_back(OptionInfo(OPTION_OXCE, "oxceGeoShowScoreInsteadOfFunds", &oxceGeoShowScoreInsteadOfFunds, false, "", "HIDDEN"));
+	_info.push_back(OptionInfo(OPTION_OXCE, "oxceGeoShowScoreInsteadOfFunds", &oxceGeoShowScoreInsteadOfFunds, false)); // debug only
+	_info.push_back(OptionInfo(OPTION_OXCE, "oxceGeoEnableTrainingIndicator", &oxceGeoEnableTrainingIndicator, false, "", "HIDDEN"));
 	_info.push_back(OptionInfo(OPTION_OXCE, "oxceGeoSuppressRedundantHKAlert", &oxceGeoSuppressRedundantHKAlert, true, "", "HIDDEN"));
 	_info.push_back(OptionInfo(OPTION_OXCE, "oxceGeoSuppressLandingWithoutEquipment", &oxceGeoSuppressLandingWithoutEquipment, false, "", "HIDDEN"));
 	_info.push_back(OptionInfo(OPTION_OXCE, "oxceGeoGoToNearestBase", &oxceGeoGoToNearestBase, false, "", "HIDDEN"));
@@ -434,6 +434,8 @@ void createOptionsOXCE()
 
 	_info.push_back(OptionInfo(OPTION_OXCE, "oxceBaseInfoDefenseScaleMultiplier", &oxceBaseInfoDefenseScaleMultiplier, 100, "", "HIDDEN"));
 	_info.push_back(OptionInfo(OPTION_OXCE, "oxceBaseSoldierTransformationShowOnlyEligible", &oxceBaseSoldierTransformationShowOnlyEligible, false, "", "HIDDEN"));
+	_info.push_back(OptionInfo(OPTION_OXCE, "oxceBaseFilterResearchable", &oxceBaseFilterResearchable, false, "", "HIDDEN"));
+	_info.push_back(OptionInfo(OPTION_OXCE, "oxceBaseManufactureFallbackButton", &oxceBaseManufactureFallbackButton, false, "", "HIDDEN"));
 #ifdef __MOBILE__
 	_info.push_back(OptionInfo(OPTION_OXCE, "oxceBaseManufactureInfinityButton", &oxceBaseManufactureInfinityButton, true, "", "HIDDEN"));
 	_info.push_back(OptionInfo(OPTION_OXCE, "oxceBaseTouchButtons", &oxceBaseTouchButtons, true, "", "HIDDEN"));
@@ -453,10 +455,14 @@ void createOptionsOXCE()
 	_info.push_back(OptionInfo(OPTION_OXCE, "oxceToggleNightVisionType", &oxceToggleNightVisionType, 1, "", "HIDDEN"));     // per battle
 	_info.push_back(OptionInfo(OPTION_OXCE, "oxceToggleBrightnessType", &oxceToggleBrightnessType, 0, "", "HIDDEN"));       // not persisted
 
+	_info.push_back(OptionInfo(OPTION_OXCE, "oxceShowBurningAsWounded", &oxceShowBurningAsWounded, false, "", "HIDDEN"));
+	_info.push_back(OptionInfo(OPTION_OXCE, "oxceDisableInfoOnThrowCursor", &oxceDisableInfoOnThrowCursor, false, "", "HIDDEN"));
 	_info.push_back(OptionInfo(OPTION_OXCE, "oxceSwapDontReselectActions", &oxceSwapDontReselectActions, false, "", "HIDDEN"));
 	_info.push_back(OptionInfo(OPTION_OXCE, "oxceEnableUnitResponseSounds", &oxceEnableUnitResponseSounds, true, "", "HIDDEN"));
 	_info.push_back(OptionInfo(OPTION_OXCE, "oxceHiddenMovementBackgroundChangeFrequency", &oxceHiddenMovementBackgroundChangeFrequency, 1, "", "HIDDEN"));
 	_info.push_back(OptionInfo(OPTION_OXCE, "oxceInventoryShowUnitSlot", &oxceInventoryShowUnitSlot, false, "", "HIDDEN"));
+	_info.push_back(OptionInfo(OPTION_OXCE, "oxceReplaceNotesLink", &oxceReplaceNotesLink, false, "", "HIDDEN"));
+
 #ifdef __MOBILE__
 	_info.push_back(OptionInfo(OPTION_OXCE, "oxceInventorySplitScrollButton", &oxceInventorySplitScrollButton, true, "", "HIDDEN"));
 	_info.push_back(OptionInfo(OPTION_OXCE, "oxceInventoryDropItemOverPaperdoll", &oxceInventoryDropItemOverPaperdoll, true, "", "HIDDEN"));
@@ -484,11 +490,13 @@ void createAdvancedOptionsOXCE()
 	_info.push_back(OptionInfo(OPTION_OXCE, "oxceLinks", &oxceLinks, true, "STR_OXCE_LINKS", "STR_GENERAL"));
 	_info.push_back(OptionInfo(OPTION_OXCE, "oxceLinksDisableTextEdit", &oxceLinksDisableTextEdit, true, "", "HIDDEN"));
 	_info.push_back(OptionInfo(OPTION_OXCE, "oxceFatFingerLinks", &oxceFatFingerLinks, true, "", "HIDDEN"));
+	_info.push_back(OptionInfo(OPTION_OXCE, "oxceBattleTouchButtonsEnabled", &oxceBattleTouchButtonsEnabled, true, "", "HIDDEN"));
 	_info.push_back(OptionInfo(OPTION_OXCE, "oxceQuickSearchButton", &oxceQuickSearchButton, true, "", "HIDDEN"));
 #else
 	_info.push_back(OptionInfo(OPTION_OXCE, "oxceLinks", &oxceLinks, false, "STR_OXCE_LINKS", "STR_GENERAL"));
 	_info.push_back(OptionInfo(OPTION_OXCE, "oxceLinksDisableTextEdit", &oxceLinksDisableTextEdit, false, "", "HIDDEN"));
 	_info.push_back(OptionInfo(OPTION_OXCE, "oxceFatFingerLinks", &oxceFatFingerLinks, false, "", "HIDDEN"));
+	_info.push_back(OptionInfo(OPTION_OXCE, "oxceBattleTouchButtonsEnabled", &oxceBattleTouchButtonsEnabled, false, "", "HIDDEN"));
 	_info.push_back(OptionInfo(OPTION_OXCE, "oxceQuickSearchButton", &oxceQuickSearchButton, false, "", "HIDDEN"));
 #endif
 
@@ -522,6 +530,7 @@ void createAdvancedOptionsOXCE()
 	_info.push_back(OptionInfo(OPTION_OXCE, "oxceNightVisionColor", &oxceNightVisionColor, 5, "STR_NIGHT_VISION_COLOR", "STR_BATTLESCAPE"));
 	_info.push_back(OptionInfo(OPTION_OXCE, "oxceAutoNightVisionThreshold", &oxceAutoNightVisionThreshold, 15, "STR_AUTO_NIGHT_VISION_THRESHOLD", "STR_BATTLESCAPE"));
 	_info.push_back(OptionInfo(OPTION_OXCE, "oxceShowAccuracyOnCrosshair", &oxceShowAccuracyOnCrosshair, 1, "STR_SHOW_ACCURACY_ON_CROSSHAIR", "STR_BATTLESCAPE"));
+	_info.push_back(OptionInfo(OPTION_OXCE, "oxceReactionFireThreshold", &oxceReactionFireThreshold, 0, "STR_REACTION_FIRE_THRESHOLD", "STR_BATTLESCAPE"));
 	_info.push_back(OptionInfo(OPTION_OXCE, "oxceAutoSell", &oxceAutoSell, false, "STR_AUTO_SELL", "STR_BATTLESCAPE"));
 	_info.push_back(OptionInfo(OPTION_OXCE, "oxceAutomaticPromotions", &oxceAutomaticPromotions, true, "STR_AUTOMATICPROMOTIONS", "STR_BATTLESCAPE"));
 	_info.push_back(OptionInfo(OPTION_OXCE, "oxceEnableOffCentreShooting", &oxceEnableOffCentreShooting, false, "STR_OFF_CENTRE_SHOOTING", "STR_BATTLESCAPE"));
@@ -531,8 +540,8 @@ void createAdvancedOptionsOXCE()
 void createControlsOXCE()
 {
 	// OXCE controls general
-	_info.push_back(KeyOptionInfo(OPTION_OXCE, "keyToggleQuickSearch", &keyToggleQuickSearch, SDLK_q, "STR_TOGGLE_QUICK_SEARCH", "STR_GENERAL"));
-	_info.push_back(KeyOptionInfo(OPTION_OXCE, "keyInstaSave", &keyInstaSave, SDLK_F6, "STR_INSTA_SAVE", "STR_GENERAL"));
+	_info.push_back(OptionInfo(OPTION_OXCE, "keyToggleQuickSearch", &keyToggleQuickSearch, SDLK_q, "STR_TOGGLE_QUICK_SEARCH", "STR_GENERAL")); //
+	_info.push_back(OptionInfo(OPTION_OXCE, "keyInstaSave", &keyInstaSave, SDLK_F6, "STR_INSTA_SAVE", "STR_GENERAL"));
 
 	// OXCE controls geoscape
 	_info.push_back(KeyOptionInfo(OPTION_OXCE, "keyGeoUfoTracker", &keyGeoUfoTracker, SDLK_t, "STR_UFO_TRACKER", "STR_GEOSCAPE"));
@@ -607,45 +616,47 @@ void createAdvancedOptionsOTHER()
 	_info.push_back(OptionInfo(OPTION_OTHER, "showCraftHangar", &showCraftHangar, false, "STR_SHOW_CRAFT_HANGAR", "STR_GENERAL"));	
 
 	_info.push_back(OptionInfo(OPTION_OTHER, "dogfightAI", &dogfightAI, true, "STR_DOGFIGHTAI", "STR_GEOSCAPE"));
+	_info.push_back(OptionInfo(OPTION_OTHER, "aggressiveRetaliation", &aggressiveRetaliation, true, "STR_AGGRESSIVERETALIATION", "STR_GEOSCAPE"));
 	_info.push_back(OptionInfo(OPTION_OTHER, "displayHiddenAlienActivity", &displayHiddenAlienActivity, 0, "STR_DISPLAY_HIDDEN_ALIEN_ACTIVITY", "STR_GEOSCAPE"));
 
 	_info.push_back(OptionInfo(OPTION_OTHER, "baseDefenseProbability", &baseDefenseProbability, false, "STR_DISPLAY_BASE_DEFENSE_PROBABILITY", "STR_BASESCAPE"));
 	_info.push_back(OptionInfo(OPTION_OTHER, "baseDetectionProbability", &baseDetectionProbability, false, "STR_DISPLAY_BASE_DETECTION_PROBABILITY", "STR_BASESCAPE"));
 
+	_info.push_back(OptionInfo(OPTION_OTHER, "shootingSpreadMode", &shootingSpreadMode, 1, "STR_SHOOTING_SPREAD_MODE", "STR_BATTLESCAPE"));
+	_info.push_back(OptionInfo(OPTION_OTHER, "useChanceToHit", &useChanceToHit, true, "STR_BATTLECHANCETOHIT", "STR_BATTLESCAPE"));
 	_info.push_back(OptionInfo(OPTION_OTHER, "battleRealisticAccuracy", &battleRealisticAccuracy, false, "STR_BATTLEREALISTICACCURACY", "STR_BATTLESCAPE"));
-	_info.push_back(OptionInfo(OPTION_OTHER, "battleRealisticImprovedSnap", &battleRealisticImprovedSnap, true, "STR_BATTLEREALISTICIMPSNAP", "STR_BATTLESCAPE"));
 	_info.push_back(OptionInfo(OPTION_OTHER, "battleRealisticImprovedAimed", &battleRealisticImprovedAimed, true, "STR_BATTLEREALISTICIMPAIMED", "STR_BATTLESCAPE"));
 	_info.push_back(OptionInfo(OPTION_OTHER, "battleRealisticImprovedLof", &battleRealisticImprovedLof, false, "STR_BATTLEREALISTICIMPLOF", "STR_BATTLESCAPE"));
 	_info.push_back(OptionInfo(OPTION_OTHER, "battleRealisticShotDispersion", &battleRealisticShotDispersion, 1, "STR_BATTLEREALISTICSHOTDISPERSION", "STR_BATTLESCAPE"));
 	_info.push_back(OptionInfo(OPTION_OTHER, "battleRealisticCoverEfficiency", &battleRealisticCoverEfficiency, 3, "STR_BATTLEREALISTICCOVEREFFICIENCY", "STR_BATTLESCAPE"));
 	_info.push_back(OptionInfo(OPTION_OTHER, "battleRealisticDisplayRolls", &battleRealisticDisplayRolls, false, "STR_BATTLEREALISTICDISPLAYROLLS", "STR_BATTLESCAPE"));
+	_info.push_back(OptionInfo(OPTION_OTHER, "battleRealisticDisplayOthersRolls", &battleRealisticDisplayOthersRolls, false, "STR_BATTLEREALISTICDISPLAYOTHERSROLLS", "STR_BATTLESCAPE"));
 	_info.push_back(OptionInfo(OPTION_OTHER, "battleAltGrenades", &battleAltGrenades, false, "STR_BATTLEALTGRENADES", "STR_BATTLESCAPE"));
+	_info.push_back(OptionInfo(OPTION_OTHER, "battleThrownSpeed", &battleThrownSpeed, 0, "STR_BATTLETHROWNSPEED", "STR_BATTLESCAPE"));
 	_info.push_back(OptionInfo(OPTION_OTHER, "instantPrime", &instantPrime, false, "STR_INSTANTPRIME", "STR_BATTLESCAPE"));
 	_info.push_back(OptionInfo(OPTION_OTHER, "strictBlockedChecking", &strictBlockedChecking, false, "STR_STRICTBLOCKEDCHECKING", "STR_BATTLESCAPE"));
 	_info.push_back(OptionInfo(OPTION_OTHER, "battleTerrainSquishyness", &battleTerrainSquishyness, 1, "STR_BATTLETERRAINSQUISHYNESS", "STR_BATTLESCAPE"));
 	_info.push_back(OptionInfo(OPTION_OTHER, "oxceFOW", &oxceFOW, 0, "STR_FOW", "STR_BATTLESCAPE"));
 	_info.push_back(OptionInfo(OPTION_OTHER, "oxceFOWColor", &oxceFOWColor, 1, "STR_FOW_COLOR", "STR_BATTLESCAPE"));
 	_info.push_back(OptionInfo(OPTION_OTHER, "oxceSmartCtrlEquip", &oxceSmartCtrlEquip, true, "STR_SMARTCONTROLEQUIP", "STR_BATTLESCAPE"));
+	_info.push_back(OptionInfo(OPTION_OTHER, "preprimeGrenades", &preprimeGrenades, 1, "STR_PREPRIMEGRENADES", "STR_BATTLESCAPE"));
 	_info.push_back(OptionInfo(OPTION_OTHER, "updateTurnsSinceSeenByClue", &updateTurnsSinceSeenByClue, true, "STR_UPDATETURNSSINCESEENBYCLUE", "STR_BATTLESCAPE"));
 
 	_info.push_back(OptionInfo(OPTION_OTHER, "brutalAI", &brutalAI, true, "STR_BRUTALAI", "STR_AI"));
 	_info.push_back(OptionInfo(OPTION_OTHER, "brutalCivilians", &brutalCivilians, false, "STR_BRUTALCIVILIANS", "STR_AI"));
 	_info.push_back(OptionInfo(OPTION_OTHER, "ignoreDelay", &ignoreDelay, true, "STR_IGNOREDELAY", "STR_AI"));
-	_info.push_back(OptionInfo(OPTION_OTHER, "cheatOnMovement", &cheatOnMovement, false, "STR_CHEATONMOVEMENT", "STR_AI"));
 	_info.push_back(OptionInfo(OPTION_OTHER, "allowPreprime", &allowPreprime, true, "STR_ALLOWPREPRIME", "STR_AI"));
 	_info.push_back(OptionInfo(OPTION_OTHER, "avoidMines", &avoidMines, true, "STR_AVOIDMINES", "STR_AI"));
-	_info.push_back(OptionInfo(OPTION_OTHER, "avoidCuddle", &avoidCuddle, true, "STR_AVOIDCUDDLE", "STR_AI"));
 	_info.push_back(OptionInfo(OPTION_OTHER, "aiPeformance", &aiPerformanceOptimization, false, "STR_AI_PERFORMANCE", "STR_AI"));
-	_info.push_back(OptionInfo(OPTION_OTHER, "aiTargetMode", &aiTargetMode, 3, "STR_AITARGETMODE", "STR_AI"));
-	_info.push_back(OptionInfo(OPTION_OTHER, "aggression", &aggression, 1, "STR_AGGRESSIONMODE", "STR_AI"));
-	_info.push_back(OptionInfo(OPTION_OTHER, "autoCombat", &autoCombat, false, "STR_AUTOCOMBAT", "STR_AI"));
-	_info.push_back(OptionInfo(OPTION_OTHER, "autoCombatEachCombat", &autoCombatEachCombat, true, "STR_AUTOCOMBAT_EACH_COMBAT", "STR_AI"));
-	_info.push_back(OptionInfo(OPTION_OTHER, "autoCombatEachTurn", &autoCombatEachTurn, true, "STR_AUTOCOMBAT_EACH_TURN", "STR_AI"));
-	_info.push_back(OptionInfo(OPTION_OTHER, "autoCombatControlPerUnit", &autoCombatControlPerUnit, true, "STR_AUTOCOMBAT_PER_UNIT", "STR_AI"));
-	_info.push_back(OptionInfo(OPTION_OTHER, "autoCombatDefaultSoldier",     &autoCombatDefaultSoldier,     true, "STR_AUTOCOMBAT_DEFAULT_SOLDIER",     "STR_AI"));
-	_info.push_back(OptionInfo(OPTION_OTHER, "autoCombatDefaultHWP",         &autoCombatDefaultHWP,         true, "STR_AUTOCOMBAT_DEFAULT_HWP",         "STR_AI"));
-	_info.push_back(OptionInfo(OPTION_OTHER, "autoCombatDefaultMindControl", &autoCombatDefaultMindControl, true, "STR_AUTOCOMBAT_DEFAULT_MINDCONTROL", "STR_AI"));
-	_info.push_back(OptionInfo(OPTION_OTHER, "autoCombatDefaultRemain",      &autoCombatDefaultRemain,      true, "STR_AUTOCOMBAT_DEFAULT_REMAIN",      "STR_AI"));
+	_info.push_back(OptionInfo(OPTION_OTHER, "aiCheatMode", &aiCheatMode, 0, "STR_AICHEATMODE", "STR_AI"));
+	_info.push_back(OptionInfo(OPTION_OTHER, "autoCombat", &autoCombat, false, "STR_AUTOCOMBAT", "STR_AUTO"));
+	_info.push_back(OptionInfo(OPTION_OTHER, "autoCombatEachCombat", &autoCombatEachCombat, true, "STR_AUTOCOMBAT_EACH_COMBAT", "STR_AUTO"));
+	_info.push_back(OptionInfo(OPTION_OTHER, "autoCombatEachTurn", &autoCombatEachTurn, true, "STR_AUTOCOMBAT_EACH_TURN", "STR_AUTO"));
+	_info.push_back(OptionInfo(OPTION_OTHER, "autoCombatControlPerUnit", &autoCombatControlPerUnit, true, "STR_AUTOCOMBAT_PER_UNIT", "STR_AUTO"));
+	_info.push_back(OptionInfo(OPTION_OTHER, "autoCombatDefaultSoldier",     &autoCombatDefaultSoldier,     true, "STR_AUTOCOMBAT_DEFAULT_SOLDIER",     "STR_AUTO"));
+	_info.push_back(OptionInfo(OPTION_OTHER, "autoCombatDefaultHWP",         &autoCombatDefaultHWP,         true, "STR_AUTOCOMBAT_DEFAULT_HWP",         "STR_AUTO"));
+	_info.push_back(OptionInfo(OPTION_OTHER, "autoCombatDefaultMindControl", &autoCombatDefaultMindControl, true, "STR_AUTOCOMBAT_DEFAULT_MINDCONTROL", "STR_AUTO"));
+	_info.push_back(OptionInfo(OPTION_OTHER, "autoCombatDefaultRemain",      &autoCombatDefaultRemain,      true, "STR_AUTOCOMBAT_DEFAULT_REMAIN",      "STR_AUTO"));
 }
 
 void createControlsOTHER()

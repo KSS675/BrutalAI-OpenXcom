@@ -633,8 +633,7 @@ void BattlescapeGenerator::nextStage()
 			{
 				++soldiersTotal;
 				bu->resetTurnsSinceStunned();
-				bu->setTurnsSinceSpotted(255);
-				bu->setTurnsLeftSpottedForSnipers(0);
+				bu->resetTurnsSince();
 				if (!selectedFirstSoldier && bu->getGeoscapeSoldier())
 				{
 					_save->setSelectedUnit(bu);
@@ -1439,28 +1438,94 @@ void BattlescapeGenerator::autoEquip(std::vector<BattleUnit*> units, Mod *mod, s
 	do
 	{
 		someoneGotSomething = false;
-		for (auto* bu : units)
+		for (BattleUnit* bu : units) // Iterate through each unit
 		{
-			for (BattleItem* bi : (*craftInv))
+			// Basic eligibility check for the unit (from your original code)
+			if (!bu->hasInventory() || !bu->getGeoscapeSoldier() || (!overrideEquipmentLayout && !bu->getGeoscapeSoldier()->getEquipmentLayout()->empty()))
 			{
-				if (bi->getRules()->getInventoryHeight() == 0 || bi->getRules()->getInventoryWidth() == 0)
+				continue; // Skip to the next unit
+			}
+
+			BattleItem* bestItemToGiveToBu = nullptr;
+			double highestScoreForBu = -1.0; // Scores will be in (0, 1], so -1.0 is a safe initial minimum
+
+			// Iterate through all available items in craftInv to find the best one for this unit
+			for (BattleItem* candidateItem : (*craftInv))
+			{
+				if (!candidateItem || !candidateItem->getRules()) // Basic sanity check
 				{
-					// don't autoequip hidden items, whatever they are
 					continue;
 				}
-				if (bi->getSlot() == groundRuleInv)
+				if (candidateItem->getRules()->getBattleType() == BT_FLARE && worldShade <= mod->getMaxDarknessToSeeUnits())
+					continue;
+
+				// Filter: only items on the ground (as per your original logic)
+				// and not "hidden" items (e.g., internal components)
+				if (candidateItem->getRules()->getInventoryHeight() == 0 || candidateItem->getRules()->getInventoryWidth() == 0)
 				{
-					if (!bu->hasInventory() || !bu->getGeoscapeSoldier() || (!overrideEquipmentLayout && !bu->getGeoscapeSoldier()->getEquipmentLayout()->empty()))
-						continue;
-					if (bu->addItem(bi, mod, true, allowAutoLoadout, false, true))
+					continue; // Skip hidden/unplaceable items
+				}
+				if (candidateItem->getSlot() != groundRuleInv)
+				{
+					continue; // Skip items not on the designated 'ground' slot for distribution
+				}
+
+				// 1. Calculate how many items of this type the unit 'bu' currently has.
+				int countOnUnit = 0;
+				std::string candidateItemName = candidateItem->getRules()->getName(); // Get the type of the item we're considering
+
+				// Iterate over all inventory slots of the unit 'bu' to count existing items of this type
+				for (const auto& unitItem : *bu->getInventory())
+				{
+					if (unitItem->getRules()->getName() == candidateItemName)
+						countOnUnit++;
+				}
+
+				double currentItemScore = 1.0 / (1.0 + static_cast<double>(countOnUnit));
+				if (bu->addItem(candidateItem, mod, true, allowAutoLoadout, false, true, true))
+				{
+					if (currentItemScore > highestScoreForBu)
 					{
-						someoneGotSomething = true;
-						break;
+						highestScoreForBu = currentItemScore;
+						bestItemToGiveToBu = candidateItem;
 					}
 				}
 			}
+
+			// 4. If a best item was found for unit 'bu' among all available items, attempt to give it.
+			if (bestItemToGiveToBu != nullptr)
+			{
+				if (bu->addItem(bestItemToGiveToBu, mod, true, allowAutoLoadout, false, true))
+				{
+					someoneGotSomething = true;
+					// This unit has received its one (best) item for this pass.
+					// The main loop will then proceed to the next unit.
+				}
+			}
+		} // End of loop iterating through units
+	} while (someoneGotSomething); // Continue distributing as long as items are being successfully given.
+	if (Options::preprimeGrenades > 0)
+	{
+		for (BattleUnit* bu : units) // Iterate through each unit
+		{
+			if (!bu->hasInventory() || !bu->getGeoscapeSoldier() || (!overrideEquipmentLayout && !bu->getGeoscapeSoldier()->getEquipmentLayout()->empty()))
+			{
+				continue; // Skip to the next unit
+			}
+			for (BattleItem* item : *bu->getInventory())
+			{
+				if (item->getRules()->getBattleType() != BT_GRENADE && item->getRules()->getBattleType() != BT_PROXIMITYGRENADE)
+				{
+					continue; // Skip items that are not grenades
+				}
+				if (Options::preprimeGrenades < 2 && item->getRules()->getDamageType()->ResistType != DT_SMOKE)
+					continue;
+				if (Options::preprimeGrenades < 3 && item->getRules()->getBattleType() == BT_PROXIMITYGRENADE)
+					continue;
+				item->setFuseTimer(0);
+			}
 		}
-	} while (someoneGotSomething);
+	}
 }
 
 /**
@@ -1524,11 +1589,16 @@ BattleUnit *BattlescapeGenerator::addXCOMUnit(BattleUnit *unit)
 	{
 		if (_craft == 0 || !_craftDeployed)
 		{
+			setCustomCraftInventoryTile();
+
 			Node* node = _save->getSpawnNode(NR_XCOM, unit);
 			if (node)
 			{
 				_save->setUnitPosition(unit, node->getPosition());
-				_craftInventoryTile = _save->getTile(node->getPosition());
+				if (!_craftInventoryTile)
+				{
+					_craftInventoryTile = _save->getTile(node->getPosition());
+				}
 				unit->setDirection(RNG::generate(0, 7));
 				_save->getUnits()->push_back(unit);
 				_save->initUnit(unit);
@@ -1538,7 +1608,10 @@ BattleUnit *BattlescapeGenerator::addXCOMUnit(BattleUnit *unit)
 			{
 				if (placeUnitNearFriend(unit))
 				{
-					_craftInventoryTile = _save->getTile(unit->getPosition());
+					if (!_craftInventoryTile)
+					{
+						_craftInventoryTile = _save->getTile(unit->getPosition());
+					}
 					unit->setDirection(RNG::generate(0, 7));
 					_save->getUnits()->push_back(unit);
 					_save->initUnit(unit);
@@ -1631,10 +1704,7 @@ BattleUnit *BattlescapeGenerator::addXCOMUnit(BattleUnit *unit)
 		}
 		else
 		{
-			if (_craft)
-			{
-				setCustomCraftInventoryTile();
-			}
+			setCustomCraftInventoryTile();
 
 			for (int i = 0; i < _mapsize_x * _mapsize_y * _mapsize_z; ++i)
 			{
@@ -1659,7 +1729,7 @@ BattleUnit *BattlescapeGenerator::addXCOMUnit(BattleUnit *unit)
  */
 void BattlescapeGenerator::setCustomCraftInventoryTile()
 {
-	if (_craftInventoryTile == 0)
+	if (_craftInventoryTile == 0 && _craft && _craftDeployed && _craftRules)
 	{
 		// Craft inventory tile position defined in the ruleset
 		const std::vector<int> coords = _craftRules->getCraftInventoryTile();
@@ -1667,6 +1737,16 @@ void BattlescapeGenerator::setCustomCraftInventoryTile()
 		{
 			Position craftInventoryTilePosition = Position(coords[0] + (_craftPos.x * 10), coords[1] + (_craftPos.y * 10), coords[2] + _craftZ);
 			canPlaceXCOMUnit(_save->getTile(craftInventoryTilePosition));
+		}
+	}
+	if (_craftInventoryTile == 0)
+	{
+		// Mapblock inventory tile position defined in the ruleset
+		if (!_backupInventoryTiles.empty())
+		{
+			int pilePick = RNG::generate(0, _backupInventoryTiles.size() - 1);
+			Tile* pileTile = _backupInventoryTiles[pilePick];
+			_craftInventoryTile = pileTile; // no checks
 		}
 	}
 }
@@ -2359,6 +2439,14 @@ int BattlescapeGenerator::loadMAP(MapBlock *mapblock, int xoff, int yoff, int zo
 		}
 	}
 
+	if (mapblock->getCraftInventoryTile().size() >= 3)
+	{
+		auto& coords = mapblock->getCraftInventoryTile();
+		Position pilePos = Position(coords[0] + xoff, coords[1] + yoff, coords[2] + zoff);
+		Tile* pileTile = _save->getTile(pilePos);
+		_backupInventoryTiles.push_back(pileTile);
+	}
+
 	return sizez;
 }
 
@@ -2788,6 +2876,8 @@ void BattlescapeGenerator::loadWeapons(const std::vector<BattleItem*> &itemList)
  */
 void BattlescapeGenerator::generateMap(const std::vector<MapScript*> *script, const std::string &customUfoName, const RuleStartingCondition* startingCondition)
 {
+	_backupInventoryTiles.clear(); // just in case
+
 	// reset ambient sound
 	_save->setAmbientSound(Mod::NO_SOUND);
 	_save->setAmbienceRandom({});

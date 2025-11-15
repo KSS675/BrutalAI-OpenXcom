@@ -18,6 +18,7 @@
  * along with OpenXcom.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "../Engine/InteractiveSurface.h"
+#include "../Engine/Options.h"
 #include "../Engine/Collections.h"
 #include "../Mod/MapData.h"
 #include "Position.h"
@@ -116,6 +117,7 @@ private:
 	int _hostileBarColor, _neutralBarColor, _borderBarColor;
 	const std::vector<Uint8> *_transparencies;
 	bool _showObstacles;
+	bool _showInfoOnCursor;
 public:
 	/// Creates a new map at the specified position and size.
 	Map(Game* game, int width, int height, int x, int y, int visibleMapHeight);

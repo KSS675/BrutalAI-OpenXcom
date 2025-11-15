@@ -22,6 +22,7 @@
 #include "LoadYaml.h"
 #include "Mod.h"
 #include "RuleSoldier.h"
+#include "../Savegame/SoldierDiary.h"
 
 namespace OpenXcom
 {
@@ -35,9 +36,11 @@ const std::string Armor::NONE = "STR_NONE";
  */
 Armor::Armor(const std::string &type, int listOrder) :
 	_type(type), _infiniteSupply(false), _frontArmor(0), _sideArmor(0), _leftArmorDiff(0), _rearArmor(0), _underArmor(0),
-	_drawingRoutine(0), _drawBubbles(false), _movementType(MT_WALK), _specab(SPECAB_NONE), _turnBeforeFirstStep(false), _turnCost(1), _moveSound(-1), _size(1), _weight(0),
+	_drawingRoutine(0), _drawBubbles(false), _movementType(MT_WALK), _specab(SPECAB_NONE), _turnBeforeFirstStep(false), _turnCost(1), _moveSound(-1), _size(1), _spaceOccupied(-1), _weight(0),
 	_visibilityAtDark(0), _visibilityAtDay(0),
-	_camouflageAtDay(0), _camouflageAtDark(0), _antiCamouflageAtDay(0), _antiCamouflageAtDark(0), _heatVision(0), _psiVision(0), _psiCamouflage(0),
+	_camouflageAtDay(0), _camouflageAtDark(0), _antiCamouflageAtDay(0), _antiCamouflageAtDark(0),
+	_visibilityThroughSmoke(0), _visibilityThroughFire(100),
+	_psiVision(0), _psiCamouflage(0),
 	_deathFrames(3), _constantAnimation(false), _hasInventory(true), _forcedTorso(TORSO_USE_GENDER),
 	_faceColorGroup(0), _hairColorGroup(0), _utileColorGroup(0), _rankColorGroup(0),
 	_fearImmune(defBoolNullable), _bleedImmune(defBoolNullable), _painImmune(defBoolNullable), _zombiImmune(defBoolNullable),
@@ -45,7 +48,7 @@ Armor::Armor(const std::string &type, int listOrder) :
 	_overKill(0.5f), _meleeDodgeBackPenalty(0),
 	_allowsRunning(defBoolNullable), _allowsStrafing(defBoolNullable), _allowsSneaking(defBoolNullable), _allowsKneeling(defBoolNullable), _allowsMoving(1),
 	_isPilotArmor(false), _allowTwoMainWeapons(false), _instantWoundRecovery(false),
-	_standHeight(-1), _kneelHeight(-1), _floatHeight(-1), _meleeOriginVoxelVerticalOffset(0), _listOrder(listOrder)
+	_standHeight(-1), _kneelHeight(-1), _floatHeight(-1), _meleeOriginVoxelVerticalOffset(0), _group(0), _listOrder(listOrder)
 {
 	for (int i=0; i < DAMAGE_TYPES; i++)
 		_damageModifier[i] = 1.0f;
@@ -99,6 +102,8 @@ void Armor::load(const YAML::YamlNodeReader& node, Mod *mod, const ModScript &pa
 	mod->loadNameNull(_type, _selfDestructItemName, reader["selfDestructItem"]);
 	mod->loadNameNull(_type, _specWeaponName, reader["specialWeapon"]);
 	mod->loadNameNull(_type, _requiresName, reader["requires"]);
+	mod->loadNameNull(_type, _requiresAwardName, reader["requiresAward"]);
+	mod->loadNameNull(_type, _requiresBonusName, reader["requiresBonus"]);
 
 	reader.tryRead("layersDefaultPrefix", _layersDefaultPrefix);
 	reader.tryRead("layersSpecificPrefix", _layersSpecificPrefix);
@@ -113,6 +118,14 @@ void Armor::load(const YAML::YamlNodeReader& node, Mod *mod, const ModScript &pa
 	reader.tryRead("drawBubbles", _drawBubbles);
 	reader.tryRead("movementType", _movementType);
 	reader.tryRead("specab", _specab);
+
+	if (const YAML::YamlNodeReader& ai = reader["ai"])
+	{
+		ai.tryRead("targetWeightAsHostile", _aiTargetWeightAsHostile);
+		ai.tryRead("targetWeightAsHostileCivilians", _aiTargetWeightAsHostileCivilians);
+		ai.tryRead("targetWeightAsFriendly", _aiTargetWeightAsFriendly);
+		ai.tryRead("targetWeightAsNeutral", _aiTargetWeightAsNeutral);
+	}
 
 	reader.tryRead("turnBeforeFirstStep", _turnBeforeFirstStep);
 	reader.tryRead("turnCost", _turnCost);
@@ -164,7 +177,8 @@ void Armor::load(const YAML::YamlNodeReader& node, Mod *mod, const ModScript &pa
 	reader.tryRead("camouflageAtDark", _camouflageAtDark);
 	reader.tryRead("antiCamouflageAtDay", _antiCamouflageAtDay);
 	reader.tryRead("antiCamouflageAtDark", _antiCamouflageAtDark);
-	reader.tryRead("heatVision", _heatVision);
+	reader.tryRead("heatVision", _visibilityThroughSmoke);
+	reader.tryRead("visibilityThroughFire", _visibilityThroughFire);
 	reader.tryRead("psiVision", _psiVision);
 	reader.tryRead("psiCamouflage", _psiCamouflage);
 	reader.tryRead("alwaysVisible", _isAlwaysVisible);
@@ -196,6 +210,7 @@ void Armor::load(const YAML::YamlNodeReader& node, Mod *mod, const ModScript &pa
 			_createsMeleeThreat = 0;
 		}
 	}
+	reader.tryRead("spaceOccupied", _spaceOccupied);
 	loadBoolNullable(_fearImmune, reader["fearImmune"]);
 	loadBoolNullable(_bleedImmune, reader["bleedImmune"]);
 	loadBoolNullable(_painImmune, reader["painImmune"]);
@@ -231,6 +246,7 @@ void Armor::load(const YAML::YamlNodeReader& node, Mod *mod, const ModScript &pa
 	_battleUnitScripts.load(_type, reader, parsers.battleUnitScripts);
 
 	mod->loadUnorderedNames(_type, _unitsNames, reader["units"]);
+	mod->loadUnorderedInts(_type, _ranks, reader["ranks"]);
 	_scriptValues.load(reader, parsers.getShared());
 	mod->loadSpriteOffset(_type, _customArmorPreviewIndex, reader["customArmorPreviewIndex"], "CustomArmorPreviews");
 	loadBoolNullable(_allowsRunning, reader["allowsRunning"]);
@@ -245,6 +261,7 @@ void Armor::load(const YAML::YamlNodeReader& node, Mod *mod, const ModScript &pa
 	reader.tryRead("kneelHeight", _kneelHeight);
 	reader.tryRead("floatHeight", _floatHeight);
 	reader.tryRead("meleeOriginVoxelVerticalOffset", _meleeOriginVoxelVerticalOffset);
+	reader.tryRead("group", _group);
 	reader.tryRead("listOrder", _listOrder);
 }
 
@@ -274,6 +291,8 @@ void Armor::afterLoad(const Mod* mod)
 	mod->linkRule(_builtInWeapons, _builtInWeaponsNames);
 	mod->linkRule(_units, _unitsNames);
 	mod->linkRule(_requires, _requiresName);
+	mod->linkRule(_requiresAward, _requiresAwardName);
+	mod->linkRule(_requiresBonus, _requiresBonusName);
 	if (_storeItemName == Armor::NONE)
 	{
 		_infiniteSupply = true;
@@ -356,6 +375,7 @@ void Armor::afterLoad(const Mod* mod)
 	}
 
 	Collections::sortVector(_units);
+	Collections::sortVector(_ranks);
 }
 
 
@@ -611,6 +631,14 @@ int Armor::getTotalSize() const
 	return _size * _size;
 }
 /**
+ * Gets how much space the armor occupies in a craft. If not specified, uses armor size.
+ * @return Space occupied by the unit.
+ */
+int Armor::getSpaceOccupied() const
+{
+	return (_spaceOccupied > -1 ? _spaceOccupied : getTotalSize());
+}
+/**
  * Gets the damage modifier for a certain damage type.
  * @param dt The damageType.
  * @return The damage modifier 0->1.
@@ -820,15 +848,6 @@ int Armor::getAntiCamouflageAtDay() const
 int Armor::getAntiCamouflageAtDark() const
 {
 	return _antiCamouflageAtDark;
-}
-
-/**
-* Gets info about heat vision.
-* @return How much smoke is ignored, in percent.
-*/
-int Armor::getHeatVision() const
-{
-	return _heatVision;
 }
 
 /**
@@ -1057,7 +1076,7 @@ bool Armor::hasInventory() const
 * Gets the list of units this armor applies to.
 * @return The list of unit IDs (empty = applies to all).
 */
-const std::vector<const RuleSoldier*> &Armor::getUnits() const
+const std::vector<const RuleSoldier*> &Armor::getUnitsRaw() const
 {
 	return _units;
 }
@@ -1065,9 +1084,38 @@ const std::vector<const RuleSoldier*> &Armor::getUnits() const
 /**
  * Check if a soldier can use this armor.
  */
-bool Armor::getCanBeUsedBy(const RuleSoldier* soldier) const
+bool Armor::getCanBeUsedBy(const Soldier* soldier) const
 {
-	return _units.empty() || Collections::sortVectorHave(_units, soldier);
+	if (!_units.empty())
+	{
+		if (!Collections::sortVectorHave(_units, soldier->getRules()))
+		{
+			return false;
+		}
+	}
+	if (!_ranks.empty())
+	{
+		int rankInt = soldier->getRank();
+		if (!Collections::sortVectorHave(_ranks, rankInt))
+		{
+			return false;
+		}
+	}
+	if (_requiresAward)
+	{
+		if (!soldier->getDiary()->containsCommendation(_requiresAward))
+		{
+			return false;
+		}
+	}
+	if (_requiresBonus)
+	{
+		if (!soldier->hasBonus(_requiresBonus))
+		{
+			return false;
+		}
+	}
+	return true;
 }
 
 /**
@@ -1237,7 +1285,8 @@ void Armor::ScriptRegister(ScriptParserBase* parser)
 	ar.add<&Armor::getCamouflageAtDay>("getCamouflageAtDay");
 	ar.add<&Armor::getAntiCamouflageAtDark>("getAntiCamouflageAtDark");
 	ar.add<&Armor::getAntiCamouflageAtDay>("getAntiCamouflageAtDay");
-	ar.add<&Armor::getHeatVision>("getHeatVision");
+	ar.add<&Armor::getVisibilityThroughSmoke>("getHeatVision", "getVisibilityThroughSmoke");
+	ar.add<&Armor::getVisibilityThroughFire>("getVisibilityThroughFire", "getVisibilityThroughFire");
 	ar.add<&Armor::getPersonalLightFriend>("getPersonalLight");
 	ar.add<&Armor::getPersonalLightHostile>("getPersonalLightHostile");
 	ar.add<&Armor::getPersonalLightNeutral>("getPersonalLightNeutral");

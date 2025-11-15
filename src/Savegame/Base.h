@@ -47,6 +47,7 @@ class Production;
 class Vehicle;
 class Ufo;
 class AlienMission;
+class Texture;
 
 enum UfoDetection : int;
 enum BasePlacementErrors : int
@@ -89,6 +90,8 @@ enum BasePlacementErrors : int
 	BPE_Used_AlienContainment = 17,
 	/// 18: This facility provides something that another facility requires
 	BPE_Used_Provides_Required = 18,
+	/// 19: trying to build a facility (from scratch) that can only be built as an upgrade of another facility
+	BPE_UpgradeOnly = 18,
 };
 
 struct BaseSumDailyRecovery
@@ -130,6 +133,7 @@ private:
 	std::map<const RuleBaseFacility*, int> _destroyedFacilitiesCache;
 	RuleBaseFacilityFunctions _provideBaseFunc = 0;
 	RuleBaseFacilityFunctions _forbiddenBaseFunc = 0;
+	const Texture* _globeTexture = nullptr;
 
 	using Target::load;
 public:
@@ -258,6 +262,8 @@ public:
 	int getMonthlyMaintenace() const;
 	/// Get the list of base's ResearchProject
 	const std::vector<ResearchProject *> & getResearch() const;
+	/// Get the list of base's ResearchProject
+	std::vector<ResearchProject *> & getResearch() { return _research; }
 	/// Add a new ResearchProject to the Base
 	void addResearch(ResearchProject *);
 	/// Remove a ResearchProject from the Base
@@ -348,6 +354,11 @@ public:
 	BaseSumDailyRecovery getSumRecoveryPerDay() const;
 	/// Removes a craft from the base.
 	std::vector<Craft*>::iterator removeCraft(Craft *craft, bool unload);
+
+	/// Gets the base's globe texture.
+	const Texture* getGlobeTexture() const { return _globeTexture; }
+	/// Sets the base's globe texture.
+	void setGlobeTexture(const Texture* globeTexture) { _globeTexture = globeTexture; }
 };
 
 }

@@ -97,7 +97,7 @@ private:
 	std::unordered_set<Tile *> _lofTilesLookup;
 	std::unordered_set<Tile *> _noLofTilesLookup;
 	int _tu, _energy, _health, _morale, _stunlevel, _mana;
-	bool _kneeled, _floating, _dontReselect;
+	bool _kneeled, _floating, _dontReselect, _aiMedikitUsed;
 	bool _haveNoFloorBelow = false;
 	int _currentArmor[SIDE_MAX], _maxArmor[SIDE_MAX];
 	int _fatalWounds[BODYPART_MAX];
@@ -118,10 +118,14 @@ private:
 	int _fireMaxHit;
 	int _smokeMaxHit;
 	int _moraleRestored;
+	int _notificationShown;
 	BattleUnit *_charging;
-	int _turnsSinceSpotted, _turnsLeftSpottedForSnipers, _turnsSinceStunned, _turnsSinceSeenByHostile, _turnsSinceSeenByNeutral, _turnsSinceSeenByPlayer = 255;
+	int _turnsSinceSeenByHostile, _turnsSinceSeenByNeutral, _turnsSinceSeenByPlayer = 255;
 	int _tileLastSpottedByHostile, _tileLastSpottedByNeutral, _tileLastSpottedByPlayer = -1;
 	int _tileLastSpottedForBlindShotByHostile, _tileLastSpottedForBlindShotByNeutral, _tileLastSpottedForBlindShotByPlayer = -1;
+	Uint8 _turnsSinceSpotted[FACTION_MAX] = { 255, 255, 255 };
+	Uint8 _turnsLeftSpottedForSnipers[FACTION_MAX] = { 0, 0, 0 };
+	Uint8 _turnsSinceStunned = 255;
 	BattleUnit* _previousOwner = nullptr;
 	const Unit *_spawnUnit = nullptr;
 	std::string _activeHand;
@@ -150,7 +154,8 @@ private:
 	int _maxViewDistanceAtDark, _maxViewDistanceAtDay;
 	int _maxViewDistanceAtDarkSquared;
 	int _psiVision = 0;
-	int _heatVision = 0;
+	int _visibilityThroughSmoke = 0;
+	int _visibilityThroughFire = 100;
 	SpecialAbility _specab;
 	Armor *_armor;
 	SoldierGender _gender;
@@ -185,6 +190,7 @@ private:
 	bool _capturable;
 	bool _vip;
 	bool _bannedInNextStage;
+	bool _skillMenuCheck;
 	ScriptValues<BattleUnit> _scriptValues;
 
 	/// Calculate stat improvement.
@@ -210,7 +216,7 @@ private:
 	/// Helper function preparing the banned flag.
 	void prepareBannedFlag(const RuleStartingCondition* sc);
 	/// Applies percentual and/or flat adjustments to the use costs.
-	void applyPercentages(RuleItemUseCost &cost, const RuleItemUseCost &flat) const;
+	void applyPercentages(RuleItemUseCost &cost, const RuleItemUseFlat &flat) const;
 public:
 	static const int MAX_SOLDIER_ID = 1000000;
 	static const int BUBBLES_FIRST_FRAME = 3;
@@ -445,10 +451,12 @@ public:
 
 	/// Get the list of items in the inventory.
 	std::vector<BattleItem*> *getInventory();
+	/// Get the list of items in the inventory.
+	const std::vector<BattleItem*> *getInventory() const;
 	/// Fit item into inventory slot.
 	bool fitItemToInventory(const RuleInventory *slot, BattleItem *item, bool testMode = false);
 	/// Add item to unit.
-	bool addItem(BattleItem *item, const Mod *mod, bool allowSecondClip = false, bool allowAutoLoadout = false, bool allowUnloadedWeapons = false, bool allowInfinite = false);
+	bool addItem(BattleItem *item, const Mod *mod, bool allowSecondClip = false, bool allowAutoLoadout = false, bool allowUnloadedWeapons = false, bool allowInfinite = false, bool testMode = false);
 
 	/// Let AI do their thing.
 	void think(BattleAction *action);
@@ -466,10 +474,19 @@ public:
 	void setWantToEndTurn(bool wantToEndTurn);
 	/// Asks the unit's AI whether it wants to end the turn or not
 	bool getWantToEndTurn();
+	/// Gets weight value as hostile unit.
+	AIAttackWeight getAITargetWeightAsHostile(const Mod *mod) const;
+	/// Gets weight value as civilian unit when consider by aliens.
+	AIAttackWeight getAITargetWeightAsHostileCivilians(const Mod *mod) const;
+	/// Gets weight value as same faction unit.
+	AIAttackWeight getAITargetWeightAsFriendly(const Mod *mod) const;
+	/// Gets weight value as neutral unit (xcom to civ or vice versa).
+	AIAttackWeight getAITargetWeightAsNeutral(const Mod *mod) const;
 	/// Set whether this unit is visible
 	void setVisible(bool flag);
 	/// Get whether this unit is visible
 	bool getVisible() const;
+
 
 	/// Check if unit can fall down.
 	void updateTileFloorState(SavedBattleGame *saveBattleGame);
@@ -653,7 +670,9 @@ public:
 	/// Get unit psi vision with bonuses.
 	int getPsiVision() const { return _psiVision; }
 	/// Get unit heat vision with bonuses.
-	int getHeatVision() const { return _heatVision; }
+	int getVisibilityThroughSmoke() const { return _visibilityThroughSmoke; }
+	/// Get unit visibility through fire with bonuses.
+	int getVisibilityThroughFire() const { return _visibilityThroughFire; }
 
 	/// Gets the unit's spawn unit.
 	const Unit *getSpawnUnit() const;
@@ -708,12 +727,22 @@ public:
 	/// Get the carried weight in strength units.
 	int getCarriedWeight(BattleItem *draggingItem = 0) const;
 
+	/// Set default state on unit.
+	void resetTurnsSince();
+	/// Update counters on unit.
+	void updateTurnsSince();
 	/// Set how many turns this unit will be exposed for.
-	void setTurnsSinceSpotted (int turns);
+	void setTurnsSinceSpotted(int turns);
+	/// Set how many turns this unit will be exposed for. For specific faction.
+	void setTurnsSinceSpottedByFaction(UnitFaction faction, int turns);
 	/// Set how many turns this unit will be exposed for.
 	int getTurnsSinceSpotted() const;
+	/// Set how many turns this unit will be exposed for. For specific faction.
+	int getTurnsSinceSpottedByFaction(UnitFaction faction) const;
 	/// Set how many turns left snipers know about this target.
 	void setTurnsLeftSpottedForSnipers (int turns);
+	/// Set how many turns left snipers know about this target. For specific faction.
+	void setTurnsLeftSpottedForSnipersByFaction (UnitFaction faction, int turns);
 	/// Get how many turns left snipers know about this target.
 	int  getTurnsLeftSpottedForSnipers() const;
 	/// Set how many turns ago this unit was last seen
@@ -723,9 +752,11 @@ public:
 	/// Set where the unit has last been spotted
 	void setTileLastSpotted(int index, UnitFaction faction, bool forBlindShot = false);
 	/// Updates when an enemy gains knowledge about a units whereabout
-	void updateEnemyKnowledge(int index, bool clue = false);
+	void updateEnemyKnowledge(int index, bool clue = false, bool door = false);
 	/// Get the tile where the unit was last spotted
 	int getTileLastSpotted(UnitFaction faction, bool forBlindShot = false) const;
+	/// Get how many turns left snipers know about this target. For specific faction.
+	int  getTurnsLeftSpottedForSnipersByFaction(UnitFaction faction) const;
 	/// Reset how many turns passed since stunned last time.
 	void resetTurnsSinceStunned() { _turnsSinceStunned = 255; }
 	/// Increase how many turns passed since stunned last time.
@@ -847,9 +878,15 @@ public:
 	/// Get the unit mind controller's id.
 	int getMindControllerId() const;
 	/// Get the unit leeroyJenkins flag
-	bool isLeeroyJenkins(bool ignoreBrutal = false) const;
+	bool isLeeroyJenkins() const;
+	/// Toggles and returns new LeeroyJenkins state
+	bool toggleLeeroyJenkins()
+	{
+		_isLeeroyJenkins = !_isLeeroyJenkins;
+		return _isLeeroyJenkins;
+	}
 	/// Get the unit's aggression-flag
-	float getAggressiveness() const;
+	float getAggressiveness(std::string missionType) const;
 	/// Gets the spotter score. This is the number of turns sniper AI units can use spotting info from this unit.
 	int getSpotterDuration() const;
 	/// Remembers the unit's XP (used for shotguns).
@@ -868,6 +905,10 @@ public:
 	bool hasAlreadyExploded() const { return _alreadyExploded; }
 	/// Set the already exploded flag.
 	void setAlreadyExploded(bool alreadyExploded) { _alreadyExploded = alreadyExploded; }
+	/// Get the unconscious/dead notification shown flag.
+	int getNotificationShown() const { return _notificationShown; }
+	/// Set the unconscious/dead notification shown flag.
+	void setNotificationShown(int notificationShown) { _notificationShown = notificationShown; }
 	/// Gets whether this unit can be captured alive (applies to aliens).
 	bool getCapturable() const;
 	/// free up the patrol node target, to allow others to use it.
@@ -892,6 +933,8 @@ public:
 	bool isBannedInNextStage() const { return _bannedInNextStage; }
 	/// Checks whether the unit is controlled by the AI or not
 	bool isAIControlled() const;
+	/// Is at least one soldier skill usable? (i.e. shown in the skill menu)
+	bool skillMenuCheck() const { return _skillMenuCheck; }
 	/// Is the unit eagerly picking up weapons?
 	bool getPickUpWeaponsMoreActively() const { return _pickUpWeaponsMoreActively; }
 	/// Is the unit afraid to pathfind through fire?
@@ -907,7 +950,7 @@ public:
 	/// Returns whether this unit is allowed to cheat with knowledge it cannot have
 	bool isCheatOnMovement();
 	/// Returns the targetting mode the unit is allowed to use
-	int aiTargetMode();
+	int aiCheatMode();
 	/// Checks whether it makes sense to reactivate a unit that wanted to end it's turn and do so if it's the case
 	void checkForReactivation(const SavedBattleGame* battle);
 	/// Cache inside the unit what positions it can reach for reference by AI

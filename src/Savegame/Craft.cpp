@@ -177,7 +177,8 @@ void Craft::load(const YAML::YamlNodeReader& node, const ScriptGlobal *shared, c
 			if (ruleUnit)
 			{
 				int size = ruleUnit->getArmor()->getTotalSize();
-				Vehicle *v = new Vehicle(ruleItem, 0, size);
+				int space = ruleUnit->getArmor()->getSpaceOccupied();
+				Vehicle *v = new Vehicle(ruleItem, 0, size, space);
 				v->load(vehiclesReader);
 				_vehicles.push_back(v);
 			}
@@ -1448,13 +1449,13 @@ int Craft::getSpaceUsed() const
 	int vehicleSpaceUsed = 0;
 	for (auto* vehicle : _vehicles)
 	{
-		vehicleSpaceUsed += vehicle->getTotalSize();
+		vehicleSpaceUsed += vehicle->getSpaceOccupied();
 	}
 	for (auto* soldier : *_base->getSoldiers())
 	{
 		if (soldier->getCraft() == this)
 		{
-			vehicleSpaceUsed += soldier->getArmor()->getTotalSize();
+			vehicleSpaceUsed += soldier->getArmor()->getSpaceOccupied();
 		}
 	}
 	return vehicleSpaceUsed;
@@ -1537,16 +1538,39 @@ bool Craft::areTooManyItemsOnboard()
 }
 
 /**
+ * Checks armor constraints.
+ * @return True if there are soldiers wearing banned armor onboard.
+ */
+bool Craft::areBannedArmorsOnboard()
+{
+	if (!_rules->getAllowedArmorGroups().empty())
+	{
+		auto& allowedArmorGroups = _rules->getAllowedArmorGroups();
+		for (auto* xsoldier : *_base->getSoldiers())
+		{
+			if (xsoldier->getCraft() == this)
+			{
+				if (std::find(allowedArmorGroups.begin(), allowedArmorGroups.end(), xsoldier->getArmor()->getGroup()) == allowedArmorGroups.end())
+				{
+					return true;
+				}
+			}
+		}
+	}
+	return false;
+}
+
+/**
 * Checks if there are enough pilots onboard.
 * @return True if the craft has enough pilots.
 */
-bool Craft::arePilotsOnboard()
+bool Craft::arePilotsOnboard(const Mod* mod)
 {
 	if (_rules->getPilots() == 0)
 		return true;
 
 	// refresh the list of pilots (must be performed here, list may be out-of-date!)
-	const std::vector<Soldier*> pilots = getPilotList(true);
+	const std::vector<Soldier*> pilots = getPilotList(true, mod);
 
 	return (int)(pilots.size()) >= _rules->getPilots();
 }
@@ -1587,7 +1611,7 @@ void Craft::removeAllPilots()
 * Gets the list of craft pilots.
 * @return List of pilots.
 */
-const std::vector<Soldier*> Craft::getPilotList(bool autoAdd)
+const std::vector<Soldier*> Craft::getPilotList(bool autoAdd, const Mod* mod)
 {
 	std::vector<Soldier*> result;
 
@@ -1600,7 +1624,11 @@ const std::vector<Soldier*> Craft::getPilotList(bool autoAdd)
 		int total = 0;
 		for (auto* soldier : *_base->getSoldiers())
 		{
-			if (soldier->getCraft() == this && soldier->getRules()->getAllowPiloting())
+			if (soldier->getCraft() == this && mod)
+			{
+				soldier->prepareStatsWithBonuses(mod); // refresh stats for checking pilot requirements
+			}
+			if (soldier->getCraft() == this && soldier->hasAllPilotingRequirements())
 			{
 				result.push_back(soldier);
 				total++;
@@ -1620,7 +1648,7 @@ const std::vector<Soldier*> Craft::getPilotList(bool autoAdd)
 			{
 				for (auto* soldier : *_base->getSoldiers())
 				{
-					if (soldier->getCraft() == this && soldier->getRules()->getAllowPiloting() && soldier->getId() == soldierId)
+					if (soldier->getCraft() == this && soldier->getId() == soldierId && soldier->hasAllPilotingRequirements())
 					{
 						result.push_back(soldier);
 						total2++;
@@ -1638,7 +1666,7 @@ const std::vector<Soldier*> Craft::getPilotList(bool autoAdd)
 				for (std::vector<Soldier*>::reverse_iterator iter = _base->getSoldiers()->rbegin(); iter != _base->getSoldiers()->rend(); ++iter)
 				{
 					Soldier* soldier = (*iter);
-					if (soldier->getCraft() == this && soldier->getRules()->getAllowPiloting() && !isPilot(soldier->getId()))
+					if (soldier->getCraft() == this && !isPilot(soldier->getId()) && soldier->hasAllPilotingRequirements())
 					{
 						result.push_back(soldier);
 						total2++;
@@ -2118,17 +2146,17 @@ int Craft::getNumTotalUnits() const
  * Validates craft space and craft constraints on soldier armor change.
  * @return True, if armor change is allowed.
  */
-bool Craft::validateArmorChange(int sizeFrom, int sizeTo) const
+bool Craft::validateArmorChange(int spaceFrom, int spaceTo) const
 {
-	if (sizeFrom == sizeTo)
+	if (spaceFrom == spaceTo)
 	{
 		return true;
 	}
 	else
 	{
-		if (sizeFrom < sizeTo)
+		if (spaceFrom < spaceTo)
 		{
-			if (getSpaceAvailable() < 3)
+			if (getSpaceAvailable() < (spaceTo - spaceFrom))
 			{
 				return false;
 			}
@@ -2145,7 +2173,7 @@ bool Craft::validateArmorChange(int sizeFrom, int sizeTo) const
 				return false;
 			}
 		}
-		else if (sizeFrom > sizeTo)
+		else if (spaceFrom > spaceTo)
 		{
 			if (_rules->getMaxSmallSoldiers() > -1 && getNumSmallSoldiers() >= _rules->getMaxSmallSoldiers())
 			{
@@ -2163,9 +2191,9 @@ bool Craft::validateArmorChange(int sizeFrom, int sizeTo) const
 /**
  * Validates craft space and craft constraints on adding soldier to a craft.
  */
-CraftPlacementErrors Craft::validateAddingSoldier(int space, const Soldier* s) const
+CraftPlacementErrors Craft::validateAddingSoldier(int availableSpace, const Soldier* s) const
 {
-	if (space < s->getArmor()->getTotalSize())
+	if (availableSpace < s->getArmor()->getSpaceOccupied())
 	{
 		return CPE_NotEnoughSpace;
 	}
@@ -2221,6 +2249,14 @@ CraftPlacementErrors Craft::validateAddingSoldier(int space, const Soldier* s) c
 		if (s->getRules()->getGroup() != currentGroup)
 		{
 			return CPE_SoldierGroupNotSame;
+		}
+	}
+	auto& allowedArmorGroups = _rules->getAllowedArmorGroups();
+	if (!allowedArmorGroups.empty())
+	{
+		if (std::find(allowedArmorGroups.begin(), allowedArmorGroups.end(), s->getArmor()->getGroup()) == allowedArmorGroups.end())
+		{
+			return CPE_ArmorGroupNotAllowed;
 		}
 	}
 	return CPE_None;

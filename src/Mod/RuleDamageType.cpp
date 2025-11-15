@@ -30,10 +30,10 @@ namespace OpenXcom
 RuleDamageType::RuleDamageType() :
 	FixRadius(0), RandomType(DRT_STANDARD), ResistType(DT_NONE), FireBlastCalc(false),
 	IgnoreDirection(false), IgnoreSelfDestruct(false), IgnorePainImmunity(false), IgnoreNormalMoraleLose(false), IgnoreOverKill(false),
-	ArmorEffectiveness(1.0f), RadiusEffectiveness(0.0f), RadiusReduction(10.0f),
+	ArmorEffectiveness(1.0f), ArmorIgnore(0), RadiusEffectiveness(0.0f), RadiusReduction(10.0f),
 	FireThreshold(1000), SmokeThreshold(1000),
 	ToHealth(1.0f), ToMana(0.0f), ToArmor(0.1f), ToArmorPre(0.0f), ToWound(1.0f), ToItem(0.0f), ToTile(0.5f), ToStun(0.25f), ToEnergy(0.0f), ToTime(0.0f), ToMorale(0.0f),
-	RandomHealth(false), RandomMana(false), RandomArmor(false), RandomArmorPre(false), RandomWound(true), RandomItem(false), RandomTile(false), RandomStun(true), RandomEnergy(false), RandomTime(false), RandomMorale(false),
+	RandomHealth(false), RandomMana(false), RandomArmor(false), RandomArmorPre(false), RandomWound(true), RandomWoundType(ItemWoundRandomType::VANILLA), RandomItem(false), RandomTile(false), RandomStun(true), RandomEnergy(false), RandomTime(false), RandomMorale(false),
 	TileDamageMethod(1)
 {
 
@@ -176,6 +176,7 @@ void RuleDamageType::load(const YAML::YamlNodeReader& node)
 	reader.tryRead("IgnoreNormalMoraleLose", IgnoreNormalMoraleLose);
 	reader.tryRead("IgnoreOverKill", IgnoreOverKill);
 	reader.tryRead("ArmorEffectiveness", ArmorEffectiveness);
+	reader.tryRead("ArmorIgnore", ArmorIgnore);
 	reader.tryRead("RadiusEffectiveness", RadiusEffectiveness);
 	reader.tryRead("RadiusReduction", RadiusReduction);
 
@@ -199,6 +200,7 @@ void RuleDamageType::load(const YAML::YamlNodeReader& node)
 	reader.tryRead("RandomArmor", RandomArmor);
 	reader.tryRead("RandomArmorPre", RandomArmorPre);
 	reader.tryRead("RandomWound", RandomWound);
+	reader.tryRead("RandomWoundType", RandomWoundType);
 	reader.tryRead("RandomItem", RandomItem);
 	reader.tryRead("RandomTile", RandomTile);
 	reader.tryRead("RandomStun", RandomStun);
@@ -275,16 +277,24 @@ int RuleDamageType::getWoundFinalDamage(int damage) const
 {
 	if (damage > 0)
 	{
+		int woundPotential = static_cast<int>(std::round(damage * ToWound));
 		if (RandomWound)
 		{
-			if (RNG::generate(0, 10) < int(damage * ToWound))
+			switch (RandomWoundType)
 			{
-				return RNG::generate(1,3);
+			case ItemWoundRandomType::VANILLA:
+				if (RNG::generate(0, 10) < woundPotential)
+				{
+					return RNG::generate(1, 3);
+				}
+				break;
+			case ItemWoundRandomType::SPREAD:
+				return RNG::generate(0, woundPotential);
 			}
 		}
 		else
 		{
-			return (int)std::round(damage * ToWound);
+			return woundPotential;
 		}
 	}
 	return 0;

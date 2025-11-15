@@ -122,11 +122,13 @@ private:
 	void addBattleType(std::ostringstream &ss, const BattleType &value, const std::string &propertyName, const BattleType &defaultvalue = BT_NONE);
 	void addDamageType(std::ostringstream &ss, const ItemDamageType &value, const std::string &propertyName, const ItemDamageType &defaultvalue = DT_NONE);
 	void addDamageRandomType(std::ostringstream &ss, const ItemDamageRandomType &value, const std::string &propertyName, const ItemDamageRandomType &defaultvalue = DRT_DEFAULT);
+	void addRandomWoundType(std::ostringstream& ss, const ItemWoundRandomType& value, const std::string& propertyName, const ItemWoundRandomType& defaultvalue = ItemWoundRandomType::VANILLA);
 	void addBattleFuseType(std::ostringstream &ss, const BattleFuseType &value, const std::string &propertyName, const BattleFuseType &defaultvalue = BFT_NONE);
 	void addRuleItemUseCostBasic(std::ostringstream &ss, const RuleItemUseCost &value, const std::string &propertyName, const int &defaultvalue = 0);
 	void addBoolOrInteger(std::ostringstream &ss, const int &value, bool formatAsBoolean);
 	void addPercentageSignOrNothing(std::ostringstream &ss, const int &value, bool smartFormat);
-	void addRuleItemUseCostFull(std::ostringstream &ss, const RuleItemUseCost &value, const std::string &propertyName, const RuleItemUseCost &defaultvalue = RuleItemUseCost(), bool smartFormat = false, const RuleItemUseCost &formatBy = RuleItemUseCost());
+	template<typename T>
+	void addRuleItemUseCostFull(std::ostringstream &ss, const RuleItemUseRuleBase<T> &value, const std::string &propertyName, const RuleItemUseRuleBase<T> &defaultvalue = RuleItemUseRuleBase<T>(), bool smartFormat = false, const RuleItemUseFlat &formatBy = RuleItemUseFlat());
 	void addBattleMediKitType(std::ostringstream &ss, const BattleMediKitType &value, const std::string &propertyName, const BattleMediKitType &defaultvalue = BMT_NORMAL);
 	void addMediKitTargets(std::ostringstream& ss, const RuleItem* value, const std::string& propertyName, const int& defaultvalue);
 	void addItemTargets(std::ostringstream& ss, const RuleItem* value, const std::string& propertyName, const int& defaultvalue);

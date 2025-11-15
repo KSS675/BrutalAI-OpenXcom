@@ -768,13 +768,14 @@ void DebriefingState::init()
 			bu->getStatistics()->delta = *bu->getGeoscapeSoldier()->getCurrentStats() - *bu->getGeoscapeSoldier()->getInitStats();
 
 			bu->getGeoscapeSoldier()->getDiary()->updateDiary(bu->getStatistics(), _game->getSavedGame()->getMissionStatistics(), _game->getMod());
-			if (!bu->getStatistics()->MIA && !bu->getStatistics()->KIA && bu->getGeoscapeSoldier()->getDiary()->manageCommendations(_game->getMod(), _game->getSavedGame()->getMissionStatistics()))
+			if (!bu->getStatistics()->MIA && !bu->getStatistics()->KIA &&
+				bu->getGeoscapeSoldier()->getDiary()->manageCommendations(_game->getMod(), _game->getSavedGame(), bu->getGeoscapeSoldier()))
 			{
 				_soldiersCommended.push_back(bu->getGeoscapeSoldier());
 			}
 			else if (bu->getStatistics()->MIA || bu->getStatistics()->KIA)
 			{
-				bu->getGeoscapeSoldier()->getDiary()->manageCommendations(_game->getMod(), _game->getSavedGame()->getMissionStatistics());
+				bu->getGeoscapeSoldier()->getDiary()->manageCommendations(_game->getMod(), _game->getSavedGame(), bu->getGeoscapeSoldier());
 				_deadSoldiersCommended.push_back(bu->getGeoscapeSoldier());
 			}
 		}
@@ -882,6 +883,16 @@ void DebriefingState::btnOkClick(Action *)
 	}
 	else
 	{
+		// Autosave after mission
+		if (_game->getSavedGame()->isIronman())
+		{
+			_game->pushState(new SaveGameState(OPT_GEOSCAPE, SAVE_IRONMAN, _palette));
+		}
+		else if (Options::autosave)
+		{
+			_game->pushState(new SaveGameState(OPT_GEOSCAPE, SAVE_AUTO_GEOSCAPE, _palette));
+		}
+
 		if (_eventToSpawn)
 		{
 			bool canSpawn = _game->getSavedGame()->canSpawnInstantEvent(_eventToSpawn);
@@ -959,16 +970,6 @@ void DebriefingState::btnOkClick(Action *)
 				_game->pushState(new SellState(_base, 0, OPT_BATTLESCAPE));
 				_game->pushState(new ErrorMessageState(tr("STR_STORAGE_EXCEEDED").arg(_base->getName()), _palette, _game->getMod()->getInterface("debriefing")->getElement("errorMessage")->color, "BACK01.SCR", _game->getMod()->getInterface("debriefing")->getElement("errorPalette")->color));
 			}
-		}
-
-		// Autosave after mission
-		if (_game->getSavedGame()->isIronman())
-		{
-			_game->pushState(new SaveGameState(OPT_GEOSCAPE, SAVE_IRONMAN, _palette));
-		}
-		else if (Options::autosave)
-		{
-			_game->pushState(new SaveGameState(OPT_GEOSCAPE, SAVE_AUTO_GEOSCAPE, _palette));
 		}
 	}
 }
@@ -2330,6 +2331,7 @@ void DebriefingState::reequipCraft(Base *base, Craft *craft, bool vehicleItemsCa
 		int qty = base->getStorageItems()->getItem(pair.first);
 		const RuleItem *tankRule = pair.first;
 		int size = tankRule->getVehicleUnit()->getArmor()->getTotalSize();
+		int space = tankRule->getVehicleUnit()->getArmor()->getSpaceOccupied();
 		int canBeAdded = std::min(qty, pair.second);
 		if (qty < pair.second)
 		{ // missing tanks
@@ -2341,7 +2343,7 @@ void DebriefingState::reequipCraft(Base *base, Craft *craft, bool vehicleItemsCa
 		{ // so this tank does NOT require ammo
 			for (int j = 0; j < canBeAdded; ++j)
 			{
-				craft->getVehicles()->push_back(new Vehicle(tankRule, tankRule->getVehicleClipSize(), size));
+				craft->getVehicles()->push_back(new Vehicle(tankRule, tankRule->getVehicleClipSize(), size, space));
 			}
 			base->getStorageItems()->removeItem(pair.first, canBeAdded);
 		}
@@ -2362,7 +2364,7 @@ void DebriefingState::reequipCraft(Base *base, Craft *craft, bool vehicleItemsCa
 			{
 				for (int j = 0; j < canBeAdded; ++j)
 				{
-					craft->getVehicles()->push_back(new Vehicle(tankRule, tankRule->getVehicleClipSize(), size));
+					craft->getVehicles()->push_back(new Vehicle(tankRule, tankRule->getVehicleClipSize(), size, space));
 					base->getStorageItems()->removeItem(ammo, ammoPerVehicle);
 				}
 				base->getStorageItems()->removeItem(pair.first, canBeAdded);

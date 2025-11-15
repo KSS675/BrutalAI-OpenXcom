@@ -195,6 +195,7 @@ bool Mod::EXTENDED_RUNNING_COST;
 int Mod::EXTENDED_MOVEMENT_COST_ROUNDING;
 bool Mod::EXTENDED_HWP_LOAD_ORDER;
 int Mod::EXTENDED_SPOT_ON_HIT_FOR_SNIPING;
+int Mod::EXTENDED_BERSERK_WITH_AIMED;
 int Mod::EXTENDED_MELEE_REACTIONS;
 int Mod::EXTENDED_TERRAIN_MELEE;
 int Mod::EXTENDED_UNDERWATER_THROW_FACTOR;
@@ -310,6 +311,7 @@ void Mod::resetGlobalStatics()
 	EXTENDED_MOVEMENT_COST_ROUNDING = 0;
 	EXTENDED_HWP_LOAD_ORDER = false;
 	EXTENDED_SPOT_ON_HIT_FOR_SNIPING = 0;
+	EXTENDED_BERSERK_WITH_AIMED = 0;
 	EXTENDED_MELEE_REACTIONS = 0;
 	EXTENDED_TERRAIN_MELEE = 0;
 	EXTENDED_UNDERWATER_THROW_FACTOR = 0;
@@ -420,14 +422,17 @@ Mod::Mod() :
 	_maxViewDistance(20), _maxDarknessToSeeUnits(9), _maxStaticLightDistance(16), _maxDynamicLightDistance(24), _enhancedLighting(0),
 	_costHireEngineer(0), _costHireScientist(0),
 	_costEngineer(0), _costScientist(0), _timePersonnel(0), _hireByCountryOdds(0), _hireByRegionOdds(0), _initialFunding(0),
-	_aiUseDelayBlaster(3), _aiUseDelayFirearm(0), _aiUseDelayGrenade(3), _aiUseDelayProxy(999), _aiUseDelayMelee(0), _aiUseDelayPsionic(0),
+	_aiUseDelayBlaster(3), _aiUseDelayFirearm(0), _aiUseDelayGrenade(3), _aiUseDelayProxy(999), _aiUseDelayMelee(0), _aiUseDelayPsionic(0), _aiUseDelayMedikit(999),
 	_aiFireChoiceIntelCoeff(5), _aiFireChoiceAggroCoeff(5), _aiExtendedFireModeChoice(false), _aiRespectMaxRange(false), _aiDestroyBaseFacilities(false),
 	_aiPickUpWeaponsMoreActively(false), _aiPickUpWeaponsMoreActivelyCiv(false),
-	_maxLookVariant(0), _tooMuchSmokeThreshold(10), _customTrainingFactor(100), _minReactionAccuracy(0), _chanceToStopRetaliation(0), _lessAliensDuringBaseDefense(false),
+	_aiReactionFireThreshold(0), _aiReactionFireThresholdCiv(0),
+	_maxLookVariant(0), _tooMuchSmokeThreshold(10), _customTrainingFactor(100),
+	_chanceToStopRetaliation(0), _chanceToDetectAlienBaseEachMonth(20), _lessAliensDuringBaseDefense(false),
 	_allowCountriesToCancelAlienPact(false), _buildInfiltrationBaseCloseToTheCountry(false), _infiltrateRandomCountryInTheRegion(false), _allowAlienBasesOnWrongTextures(true),
 	_kneelBonusGlobal(115), _oneHandedPenaltyGlobal(80),
 	_enableCloseQuartersCombat(0), _closeQuartersAccuracyGlobal(100), _closeQuartersTuCostGlobal(12), _closeQuartersEnergyCostGlobal(8), _closeQuartersSneakUpGlobal(0),
 	_noLOSAccuracyPenaltyGlobal(-1),
+	_explodeInventoryGlobal(0),
 	_surrenderMode(0),
 	_bughuntMinTurn(999), _bughuntMaxEnemies(2), _bughuntRank(0), _bughuntLowMorale(40), _bughuntTimeUnitsLeft(60),
 	_manaEnabled(false), _manaBattleUI(false), _manaTrainingPrimary(false), _manaTrainingSecondary(false), _manaReplenishAfterMission(true),
@@ -801,6 +806,10 @@ Mod::~Mod()
 	{
 		delete pair.second;
 	}
+	for (auto& pair : _adhocScripts)
+	{
+		delete pair.second;
+	}
 	for (auto& pair : _soundDefs)
 	{
 		delete pair.second;
@@ -1086,6 +1095,18 @@ const std::vector<std::vector<Uint8> > *Mod::getLUTs() const
 }
 
 /**
+ * Returns the lookup tables of hit chances.
+ * @return Pointer to the list of lookup tables.
+ */
+const std::vector<int>* Mod::getHitChancesTable(int size) const
+{
+	auto it = _hitChancesTable.find(size);
+	if (it != _hitChancesTable.end()) return &it->second;
+
+	return nullptr;
+}
+
+/**
  * Returns the struct with Realistic Accuracy mod parameters
  * @return Reference to the Realistic Accuracy mod parameters struct.
  */
@@ -1093,7 +1114,6 @@ const Mod::AccuracyModConfig *Mod::getAccuracyModConfig() const
 {
     return &_realisticAccuracyConfig;
 }
-
 
 /**
  * Check for obsolete error based on year.
@@ -1958,7 +1978,6 @@ void Mod::loadUnorderedInts(const std::string &parent, std::vector<int>& ints, c
 	loadHelper(parent, ints, reader, LoadFuncEditable{});
 }
 
-
 /**
  * Loads a name.
  */
@@ -2319,6 +2338,7 @@ void Mod::loadAll()
 	afterLoadHelper("craftWeapons", this, _craftWeapons, &RuleCraftWeapon::afterLoad);
 	afterLoadHelper("countries", this, _countries, &RuleCountry::afterLoad);
 	afterLoadHelper("crafts", this, _crafts, &RuleCraft::afterLoad);
+	afterLoadHelper("events", this, _events, &RuleEvent::afterLoad);
 
 	for (auto& a : _armors)
 	{
@@ -2511,7 +2531,8 @@ void Mod::loadMod(const std::vector<FileMap::FileRecord> &rulesetFiles, ModScrip
 	// short of knowing the results of calls to the RNG before they're determined.
 	// the best solution i can come up with is to disallow it, as there are other ways to achieve what this would amount to anyway,
 	// and they don't require time travel. - Warboy
-	for (auto& pair : _missionScripts)
+	for (auto& map : { _missionScripts, _adhocScripts })
+	for (auto& pair : map)
 	{
 		RuleMissionScript *rule = pair.second;
 		std::set<std::string> missions = rule->getAllMissionTypes();
@@ -2706,6 +2727,7 @@ void Mod::loadConstants(const YAML::YamlNodeReader &reader)
 	reader.tryRead("extendedMovementCostRounding", EXTENDED_MOVEMENT_COST_ROUNDING);
 	reader.tryRead("extendedHwpLoadOrder", EXTENDED_HWP_LOAD_ORDER);
 	reader.tryRead("extendedSpotOnHitForSniping", EXTENDED_SPOT_ON_HIT_FOR_SNIPING);
+	reader.tryRead("extendedBerserkWithAimed", EXTENDED_BERSERK_WITH_AIMED);
 	reader.tryRead("extendedMeleeReactions", EXTENDED_MELEE_REACTIONS);
 	reader.tryRead("extendedTerrainMelee", EXTENDED_TERRAIN_MELEE);
 	reader.tryRead("extendedUnderwaterThrowFactor", EXTENDED_UNDERWATER_THROW_FACTOR);
@@ -3038,6 +3060,14 @@ void Mod::loadFile(const FileMap::FileRecord &filerec, ModScript &parsers)
 			rule->load(ruleReader);
 		}
 	}
+	for (const auto& ruleReader : iterateRules("adhocScripts", "type"))
+	{
+		RuleMissionScript* rule = loadRule(ruleReader, &_adhocScripts, &_adhocScriptIndex, "type");
+		if (rule != 0)
+		{
+			rule->load(ruleReader);
+		}
+	}
 
 
 
@@ -3185,6 +3215,7 @@ void Mod::loadFile(const FileMap::FileRecord &filerec, ModScript &parsers)
 		nodeAI.tryRead("aiUseDelayProxy", _aiUseDelayProxy);
 		nodeAI.tryRead("useDelayMelee", _aiUseDelayMelee);
 		nodeAI.tryRead("useDelayPsionic", _aiUseDelayPsionic);
+		nodeAI.tryRead("useDelayMedikit", _aiUseDelayMedikit);
 
 		nodeAI.tryRead("fireChoiceIntelCoeff", _aiFireChoiceIntelCoeff);
 		nodeAI.tryRead("fireChoiceAggroCoeff", _aiFireChoiceAggroCoeff);
@@ -3193,12 +3224,20 @@ void Mod::loadFile(const FileMap::FileRecord &filerec, ModScript &parsers)
 		nodeAI.tryRead("destroyBaseFacilities", _aiDestroyBaseFacilities);
 		nodeAI.tryRead("pickUpWeaponsMoreActively", _aiPickUpWeaponsMoreActively);
 		nodeAI.tryRead("pickUpWeaponsMoreActivelyCiv", _aiPickUpWeaponsMoreActivelyCiv);
+		nodeAI.tryRead("reactionFireThreshold", _aiReactionFireThreshold);
+		nodeAI.tryRead("reactionFireThresholdCiv", _aiReactionFireThresholdCiv);
+
+		nodeAI.tryRead("targetWeightThreatThreshold", _aiTargetWeightThreatThreshold);
+		nodeAI.tryRead("targetWeightAsHostile", _aiTargetWeightAsHostile);
+		nodeAI.tryRead("targetWeightAsHostileCivilians", _aiTargetWeightAsHostileCivilians);
+		nodeAI.tryRead("targetWeightAsFriendly", _aiTargetWeightAsFriendly);
+		nodeAI.tryRead("targetWeightAsNeutral", _aiTargetWeightAsNeutral);
 	}
 	reader.tryRead("maxLookVariant", _maxLookVariant);
 	reader.tryRead("tooMuchSmokeThreshold", _tooMuchSmokeThreshold);
 	reader.tryRead("customTrainingFactor", _customTrainingFactor);
-	reader.tryRead("minReactionAccuracy", _minReactionAccuracy);
 	reader.tryRead("chanceToStopRetaliation", _chanceToStopRetaliation);
+	reader.tryRead("chanceToDetectAlienBaseEachMonth", _chanceToDetectAlienBaseEachMonth);
 	reader.tryRead("lessAliensDuringBaseDefense", _lessAliensDuringBaseDefense);
 	reader.tryRead("allowCountriesToCancelAlienPact", _allowCountriesToCancelAlienPact);
 	reader.tryRead("buildInfiltrationBaseCloseToTheCountry", _buildInfiltrationBaseCloseToTheCountry);
@@ -3212,6 +3251,7 @@ void Mod::loadFile(const FileMap::FileRecord &filerec, ModScript &parsers)
 	reader.tryRead("closeQuartersEnergyCostGlobal", _closeQuartersEnergyCostGlobal);
 	reader.tryRead("closeQuartersSneakUpGlobal", _closeQuartersSneakUpGlobal);
 	reader.tryRead("noLOSAccuracyPenaltyGlobal", _noLOSAccuracyPenaltyGlobal);
+	reader.tryRead("explodeInventoryGlobal", _explodeInventoryGlobal);
 	reader.tryRead("surrenderMode", _surrenderMode);
 	reader.tryRead("bughuntMinTurn", _bughuntMinTurn);
 	reader.tryRead("bughuntMaxEnemies", _bughuntMaxEnemies);
@@ -3240,14 +3280,8 @@ void Mod::loadFile(const FileMap::FileRecord &filerec, ModScript &parsers)
     // Override any settings if presented in realisticAccuracy.rul
 	if (const auto& nodeRA = loadDocInfoHelper("realisticAccuracy"))
 	{
-		nodeRA.tryRead("minCap", _realisticAccuracyConfig.minCap);
-        nodeRA.tryRead("maxCap", _realisticAccuracyConfig.maxCap);
-        nodeRA.tryRead("aimBonus", _realisticAccuracyConfig.aimBonus);
-        nodeRA.tryRead("kneelBonus", _realisticAccuracyConfig.kneelBonus);
-        nodeRA.tryRead("sizeMultiplier", _realisticAccuracyConfig.sizeMultiplier);
+		nodeRA.tryRead("peekDistance", _realisticAccuracyConfig.peekDistance);
         nodeRA.tryRead("suicideProtectionDistance", _realisticAccuracyConfig.suicideProtectionDistance);
-        nodeRA.tryRead("bonusDistanceMax", _realisticAccuracyConfig.bonusDistanceMax);
-        nodeRA.tryRead("bonusDistanceMin", _realisticAccuracyConfig.bonusDistanceMin);
 
         // Override "Normal" fire spread option
         nodeRA.tryRead("distanceDeviation", _realisticAccuracyConfig.distanceDeviation[1]);
@@ -3259,6 +3293,54 @@ void Mod::loadFile(const FileMap::FileRecord &filerec, ModScript &parsers)
 
         nodeRA.tryRead("horizontalSpreadCoeff", _realisticAccuracyConfig.horizontalSpreadCoeff[1]);
         nodeRA.tryRead("verticalSpreadCoeff", _realisticAccuracyConfig.verticalSpreadCoeff[1]);
+	}
+
+	if (const auto& hitChancesNode = reader["hitChancesTable"])
+	{
+		// hitchance file should contain two tables for small and large units
+		// each table has 40 rows, each row represents one distance
+		// each row has 61 values for accuracies from 0 to 120%, step 2%
+		int constexpr TOTAL_TABLE_SIZE = 40 * 61;
+
+		_hitChancesTable.clear();
+		bool initState = true;
+
+		for (const auto& tableEntryNode : hitChancesNode.children())
+		{
+			int unitSize = 0;
+			if (!tableEntryNode["unitSize"].tryReadVal(unitSize))
+			{
+				initState = false;
+				continue;
+			}
+
+			std::vector<int> distanceTable;
+			const auto& distancesNode = tableEntryNode["distances"];
+			if (distancesNode.isMap())
+			{
+				for (const auto& distanceRowNode : distancesNode.children())
+				{
+					std::vector<int> rowValues;
+					loadInts("hitChancesTable", rowValues, distanceRowNode);
+					distanceTable.insert(distanceTable.end(), rowValues.begin(), rowValues.end());
+				}
+			}
+
+			if (distanceTable.size() == TOTAL_TABLE_SIZE)
+			{
+				_hitChancesTable[unitSize] = distanceTable;
+			}
+			else
+			{
+				Log(LOG_ERROR) << "Incorrect hitchances lookup table for units with size " << unitSize;
+				initState = false;
+			}
+		}
+
+		if (!initState)
+		{
+			Log(LOG_ERROR) << "Error loading hitchances lookup data!";
+		}
 	}
 
 	if (const auto& nodeGameOver = loadDocInfoHelper("gameOver"))
@@ -3491,7 +3573,7 @@ void Mod::loadFile(const FileMap::FileRecord &filerec, ModScript &parsers)
 
 	if (reader["globe"])
 	{
-		_globe->load(reader["globe"]);
+		_globe->load(reader["globe"], this);
 	}
 	if (reader["converter"])
 	{
@@ -3943,8 +4025,13 @@ SavedGame *Mod::newSave(GameDifficulty diff) const
 			{
 				// "Large soldiers" just stay in the base
 			}
-			else if (soldier->getRules()->getAllowPiloting())
+			else
 			{
+				if (soldier->getRules()->getAllowPiloting())
+				{
+					soldier->prepareStatsWithBonuses(this); // refresh stats for checking pilot requirements
+				}
+
 				Craft *found = 0;
 				for (auto* craft : *base->getCrafts())
 				{
@@ -3957,22 +4044,11 @@ SavedGame *Mod::newSave(GameDifficulty diff) const
 					if (!craft->getRules()->getAllowLanding() && err == CPE_None && craft->getSpaceUsed() < craft->getRules()->getPilots())
 					{
 						// Fill interceptors with minimum amount of pilots necessary
-						found = craft;
-					}
-				}
-				soldier->setCraft(found);
-			}
-			else
-			{
-				Craft *found = 0;
-				for (auto* craft : *base->getCrafts())
-				{
-					CraftPlacementErrors err = craft->validateAddingSoldier(craft->getSpaceAvailable(), soldier);
-					if (craft->getRules()->getAllowLanding() && err == CPE_None)
-					{
-						// First available transporter will do
-						found = craft;
-						break;
+						if (soldier->hasAllPilotingRequirements(craft))
+						{
+							found = craft;
+							break;
+						}
 					}
 				}
 				soldier->setCraft(found);
@@ -4455,6 +4531,27 @@ int Mod::getPersonnelTime() const
 }
 
 /**
+ * Returns the reaction fire threshold (default = 0).
+ * @return The threshold for a given faction.
+ */
+int Mod::getReactionFireThreshold(UnitFaction faction) const
+{
+	switch (faction)
+	{
+	case FACTION_PLAYER:
+		return Options::oxceReactionFireThreshold;
+	case FACTION_HOSTILE:
+		return _aiReactionFireThreshold;
+	case FACTION_NEUTRAL:
+		return _aiReactionFireThresholdCiv;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
+/**
  * Gets maximum supported lookVariant.
  * @return value in range from 0 to 63
  */
@@ -4661,7 +4758,7 @@ std::vector<RuleBaseFacility*> Mod::getCustomBaseFacilities(GameDifficulty diff)
 	{
 		std::string type = facilityReader["type"].readVal<std::string>();
 		RuleBaseFacility *facility = getBaseFacility(type, true);
-		if (!facility->isLift())
+		if (!facility->isLift() && !facility->isUpgradeOnly())
 		{
 			placeList.push_back(facility);
 		}
@@ -5223,10 +5320,21 @@ const std::vector<std::string> *Mod::getMissionScriptList() const
 	return &_missionScriptIndex;
 }
 
+const std::vector<std::string> *Mod::getAdhocScriptList() const
+{
+	return &_adhocScriptIndex;
+}
+
 RuleMissionScript *Mod::getMissionScript(const std::string &name, bool error) const
 {
 	return getRule(name, "Mission Script", _missionScripts, error);
 }
+
+RuleMissionScript *Mod::getAdhocScript(const std::string &name, bool error) const
+{
+	return getRule(name, "Adhoc Script", _adhocScripts, error);
+}
+
 /// Get global script data.
 ScriptGlobal *Mod::getScriptGlobal() const
 {

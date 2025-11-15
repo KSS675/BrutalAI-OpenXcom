@@ -512,7 +512,27 @@ void ManageAlienContainmentState::lstItemsLeftArrowClick(Action *action)
 void ManageAlienContainmentState::lstItemsMousePress(Action *action)
 {
 	_sel = _lstAliens->getSelectedRow();
-	if (_game->isMiddleClick(action, true))
+	if (action->getDetails()->button.button == SDL_BUTTON_WHEELUP)
+	{
+		_timerInc->stop();
+		_timerDec->stop();
+		if (action->getAbsoluteXMouse() >= _lstAliens->getArrowsLeftEdge() &&
+			action->getAbsoluteXMouse() <= _lstAliens->getArrowsRightEdge())
+		{
+			increaseByValue(Options::changeValueByMouseWheel);
+		}
+	}
+	else if (action->getDetails()->button.button == SDL_BUTTON_WHEELDOWN)
+	{
+		_timerInc->stop();
+		_timerDec->stop();
+		if (action->getAbsoluteXMouse() >= _lstAliens->getArrowsLeftEdge() &&
+			action->getAbsoluteXMouse() <= _lstAliens->getArrowsRightEdge())
+		{
+			decreaseByValue(Options::changeValueByMouseWheel);
+		}
+	}
+	else if (_game->isMiddleClick(action, true))
 	{
 		RuleResearch *selectedTopic = _game->getMod()->getResearch(_aliens[_sel]);
 		if (selectedTopic != 0)

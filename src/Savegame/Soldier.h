@@ -42,6 +42,7 @@ class SoldierDiary;
 class SavedGame;
 class RuleSoldierTransformation;
 class RuleSoldierBonus;
+class RuleSkill;
 class Base;
 struct BaseSumDailyRecovery;
 
@@ -76,8 +77,7 @@ private:
 	int _manaMissing = 0;   // amount of mana missing until full mana recovery
 	float _recovery = 0.0;  // amount of hospital attention soldier needs... used to calculate recovery time
 	bool _recentlyPromoted, _psiTraining, _training, _returnToTrainingWhenHealed;
-	bool _allowAutoCombat;
-	int _aggression;
+	bool _allowAutoCombat, _isLeeroyJenkins;
 	Armor *_armor;
 	Armor *_replacedArmor;
 	Armor *_transformedArmor;
@@ -157,7 +157,7 @@ public:
 	/// Sets the soldier's look sub type.
 	void setLookVariant(int lookVariant);
 	/// Gets soldier rules.
-	RuleSoldier *getRules() const;
+	const RuleSoldier *getRules() const;
 	/// Gets the soldier's unique ID.
 	int getId() const;
 	/// Add a mission to the counter.
@@ -287,10 +287,14 @@ public:
 	void setAllowAutoCombat(const bool newValue) {_allowAutoCombat = newValue;}
 	/// Returns new value
 	bool toggleAllowAutoCombat() {_allowAutoCombat = !_allowAutoCombat; return _allowAutoCombat;}
-	/// Get the unit's aggression.
-	int getAggression() const {return _aggression;}
-	/// Set the unit's aggression.
-	void setAggression(int aggression) {_aggression = aggression;}	
+	/// Returns the unit's leeroy-jenkins-state
+	bool isLeeroyJenkins() const { return _isLeeroyJenkins; }
+	/// Toggles and returns new LeeroyJenkins state
+	bool toggleLeeroyJenkins()
+	{
+		_isLeeroyJenkins = !_isLeeroyJenkins;
+		return _isLeeroyJenkins;
+	}
 	/// Gets the previous transformations performed on this soldier
 	std::map<std::string, int> &getPreviousTransformations();
 	/// Returns whether the unit is eligible for a certain transformation
@@ -299,6 +303,8 @@ public:
 	void transform(const Mod *mod, RuleSoldierTransformation *transformationRule, Soldier *sourceSoldier, Base *base);
 	/// Calculates how this project changes the soldier's stats
 	UnitStats calculateStatChanges(const Mod *mod, RuleSoldierTransformation *transformationRule, Soldier *sourceSoldier, int mode, const RuleSoldier *sourceSoldierType);
+	/// Checks whether the soldier has a given bonus. Disclaimer: DOES NOT REFRESH THE BONUS CACHE!
+	bool hasBonus(const RuleSoldierBonus* bonus) const;
 	/// Gets all the soldier bonuses
 	const std::vector<const RuleSoldierBonus*> *getBonuses(const Mod *mod);
 	/// Get pointer to current stats with soldier bonuses, but without armor bonuses.
@@ -311,6 +317,10 @@ public:
 	UnitStats* getDailyDogfightExperienceCache();
 	/// Resets the daily dogfight experience cache.
 	void resetDailyDogfightExperienceCache();
+	/// Check if the soldier has all the required soldier bonuses for the given soldier skill.
+	bool hasAllRequiredBonusesForSkill(const RuleSkill* skillRules);
+	/// Check if the soldier has all the required stats and soldier bonuses for piloting the (current or new) craft.
+	bool hasAllPilotingRequirements(const Craft* newCraft = nullptr) const;
 
 private:
 	std::string generateCallsign(const std::vector<SoldierNamePool*> &names);

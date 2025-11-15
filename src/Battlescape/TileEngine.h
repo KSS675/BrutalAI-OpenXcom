@@ -199,7 +199,7 @@ public:
 	/// Closes ufo doors.
 	int closeUfoDoors();
 	/// Calculates a line trajectory in tile space.
-	int calculateLineTile(Position origin, Position target, std::vector<Position> &trajectory);
+	int calculateLineTile(Position origin, Position target, std::vector<Position> &trajectory, int minLightBlock = 0);
 	/// Calculates a line trajectory in voxel space.
 	VoxelType calculateLineVoxel(Position origin, Position target, bool storeTrajectory, std::vector<Position> *trajectory, BattleUnit *excludeUnit, BattleUnit *excludeAllBut = 0, bool onlyVisible = false);
 	/// Calculates a parabola trajectory.
@@ -259,7 +259,7 @@ public:
 	/// Gets the AI to look through a window.
 	int faceWindow(Position position);
 	/// Checks a unit's % exposure on a tile, and fills array of exposed voxels
-	double checkVoxelExposure(Position *originVoxel, Tile *tile, BattleUnit *excludeUnit, bool isDebug = false, std::vector<Position> *exposedVoxels = nullptr, bool isSimpleMode = true);
+	double checkVoxelExposure(Position *originVoxel, Tile *tile, BattleUnit *excludeUnit, bool isDebug = false, std::vector<Position> *exposedVoxels = nullptr, std::vector<Position> *coveredVoxels = nullptr, bool isSimpleMode = true);
 	/// Checks validity for targetting a unit.
 	bool canTargetUnit(Position *originVoxel, Tile *tile, Position *scanVoxel, BattleUnit *excludeUnit, bool rememberObstacles, BattleUnit *potentialUnit = 0);
 	/// Check validity for targetting a tile.
@@ -300,7 +300,7 @@ public:
 	/// Checks if any tiles around this tile are next to a door
 	bool isNearDoor(Tile* tile);
 	/// Returns a vector of tiles that would be visible from a specific location
-	std::set<Tile*> visibleTilesFrom(BattleUnit* unit, Position pos, int direction, bool onlyNew = false);
+	std::set<Tile*> visibleTilesFrom(BattleUnit* unit, Position pos, int direction, bool onlyNew = false, bool ignoreAirTiles = true);
 	/// remember how the visibility from a specific position to another would be
 	void setVisibilityCache(Position from, Position to, bool visible);
 	/// recall how the visibility from a specific position to another was
