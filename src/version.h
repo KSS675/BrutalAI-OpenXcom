@@ -27,10 +27,5 @@
 #define OPENXCOM_VERSION_NUMBER 8,4,4,0
 
 #ifndef OPENXCOM_VERSION_GIT
-<<<<<<< HEAD
-#define OPENXCOM_VERSION_GIT " (v2025-11-29)"
-
-=======
 #define OPENXCOM_VERSION_GIT " (v2025-12-11)"
->>>>>>> xilmi/oxce-plus
 #endif
