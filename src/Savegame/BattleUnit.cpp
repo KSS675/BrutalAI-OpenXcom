@@ -6341,7 +6341,7 @@ bool BattleUnit::wasMaxTusOfUpdate()
 
 bool BattleUnit::isLeeroyJenkins() const
 {
-	return _isLeeroyJenkins;
+	return _isLeeroyJenkins || (_faction == FACTION_HOSTILE && Options::brutalAI == 2) || (_faction == FACTION_HOSTILE && Options::brutalCivilians == 2);
 }
 
 float BattleUnit::getAggressiveness(std::string missionType) const

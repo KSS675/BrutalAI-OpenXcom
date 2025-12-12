@@ -51,8 +51,8 @@ keyBattleCenterEnemy1, keyBattleCenterEnemy2, keyBattleCenterEnemy3, keyBattleCe
 keyBattleCenterEnemy9, keyBattleCenterEnemy10, keyBattleVoxelView, keyBattleZeroTUs, keyInvCreateTemplate, keyInvApplyTemplate, keyInvClear, keyInvAutoEquip;
 
 // AI options
-OPT bool sneakyAI, brutalAI, brutalCivilians, ignoreDelay, allowPreprime, autoCombat, aiPerformanceOptimization, avoidMines;
-OPT int aiCheatMode;
+OPT bool sneakyAI, ignoreDelay, allowPreprime, autoCombat, aiPerformanceOptimization, avoidMines;
+OPT int aiCheatMode, brutalAI, brutalCivilians;
 OPT bool autoCombatEachCombat, autoCombatEachTurn, autoCombatControlPerUnit;
 OPT bool autoCombatDefaultSoldier, autoCombatDefaultHWP, autoCombatDefaultMindControl, autoCombatDefaultRemain;
 
@@ -91,6 +91,7 @@ OPT bool oxceBattleTouchButtonsEnabled;
 OPT bool oxceQuickSearchButton;
 OPT bool oxceHighlightNewTopics;
 OPT bool oxcePediaShowClipSize;
+OPT int oxcePediaSortResistances; // hidden, unhide if becomes popular?
 
 OPT int oxceInterceptTableSize;
 OPT bool oxceEnableSlackingIndicator;
@@ -230,3 +231,4 @@ OPT SDL_Keycode keyClearLeftHand;
 OPT std::string systemLocale;
 
 OPT int battleXcomSpeedOrig;
+OPT int battleAlienSpeedOrig;
