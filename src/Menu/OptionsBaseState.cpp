@@ -234,7 +234,7 @@ void OptionsBaseState::btnOkClick(Action *)
 	Options::save();
 	_game->loadLanguages();
 	_game->getScreen()->resetDisplay();
-	SDL_WM_GrabInput(Options::captureMouse);
+	SDL_SetWindowGrab(SDL_GL_GetCurrentWindow(), Options::captureMouse ? SDL_TRUE : SDL_FALSE);
 	_game->setVolume(Options::soundVolume, Options::musicVolume, Options::uiVolume);
 	if (Options::reload && _origin == OPT_MENU)
 	{
