@@ -1004,7 +1004,7 @@ void SellState::lstItemsRightArrowClick(Action *action)
 void SellState::lstItemsMousePress(Action *action)
 {
 	_sel = _lstItems->getSelectedRow();
-	if (action->getDetails()->button.button == SDL_BUTTON_WHEELUP)
+	if (action->getDetails()->button.button == 4)
 	{
 		_timerInc->stop();
 		_timerDec->stop();
@@ -1014,7 +1014,7 @@ void SellState::lstItemsMousePress(Action *action)
 			changeByValue(Options::changeValueByMouseWheel, 1);
 		}
 	}
-	else if (action->getDetails()->button.button == SDL_BUTTON_WHEELDOWN)
+	else if (action->getDetails()->button.button == 5)
 	{
 		_timerInc->stop();
 		_timerDec->stop();
