@@ -658,7 +658,7 @@ void CraftEquipmentState::lstEquipmentMouseWheel(Action *action)
 				moveLeftByValue(Options::changeValueByMouseWheel);
 		}
 	}
-	else if (action->getDetails()->button.button == SDL_BUTTON_WHEELDOWN)
+	else if (action->getDetails()->button.button == 4)
 	{
 		_timerRight->stop();
 		_timerLeft->stop();
