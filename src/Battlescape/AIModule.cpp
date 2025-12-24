@@ -2130,7 +2130,7 @@ bool AIModule::findFirePoint()
 		}
 	}
 
-	if (bestScore > 40)
+	if (bestScore > 70)
 	{
 		_attackAction.type = BA_WALK;
 		if (_traceAI)
