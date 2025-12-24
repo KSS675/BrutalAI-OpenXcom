@@ -2530,7 +2530,7 @@ void AIModule::projectileAction()
 	{
 		// If we want to check and it's not in range, perhaps we should re-think shooting
 		int distanceSq = _unit->distance3dToPositionSq(_attackAction.target);
-		if (_attackAction.weapon->getRules()->isOutOfRange(distanceSq))
+		if (_attackAction.weapon->getRules()->isOutOfRange(distanceSq / 2.75f))
 		{
 			return;
 		}
