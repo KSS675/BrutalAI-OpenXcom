@@ -5244,7 +5244,7 @@ float AIModule::brutalScoreFiringMode(BattleAction* action, BattleUnit* target, 
 			accuracy *= action->weapon->getRules()->getNoLOSAccuracyPenalty(_save->getMod()) / 100.0;
 	}
 
-	if (action->type != BA_THROW && action->weapon->getRules()->isOutOfRange(distanceSq))
+	if (action->type != BA_THROW && action->weapon->getRules()->isOutOfRange(distanceSq / 2.75f))
 		accuracy = 0;
 	if (action->type == BA_HIT)
 	{
