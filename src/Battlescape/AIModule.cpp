@@ -2108,7 +2108,7 @@ bool AIModule::findFirePoint()
 				{
 					int distanceToTargetSq = _unit->distance3dToUnitSq(_aggroTarget);
 					int distanceToTarget = (int)std::ceil(sqrt(float(distanceToTargetSq)));
-					if (_attackAction.weapon && _attackAction.weapon->getRules()->isOutOfRange(distanceToTargetSq / 4.0f)) // make sure we can get the ruleset before checking the range
+					if (_attackAction.weapon && _attackAction.weapon->getRules()->isOutOfRange(distanceToTargetSq)) // make sure we can get the ruleset before checking the range
 					{
 						int proposedDistance = Position::distance2d(pos, _aggroTarget->getPosition());
 						proposedDistance = std::max(proposedDistance, 1);
