@@ -246,9 +246,9 @@ void OptionsBaseState::btnOkClick(Action *)
 		if (Options::displayWidth != Options::newDisplayWidth ||
 			Options::displayHeight != Options::newDisplayHeight ||
 			Options::useOpenGL != Options::newOpenGL ||
-			Options::useNearestScaler != Options::newNearestScaler ||
-			Options::useLinearScaler != Options::newLinearScaler ||
-			Options::useAnisotropicScaler != Options::newAnisotropicScaler ||
+		 //	Options::useNearestScaler != Options::newNearestScaler ||
+	   	//	Options::useLinearScaler != Options::newLinearScaler ||
+		//	Options::useAnisotropicScaler != Options::newAnisotropicScaler ||
 			Options::useOpenGLShader != Options::newOpenGLShader)
 		{
 			_game->pushState(new OptionsConfirmState(_origin));
