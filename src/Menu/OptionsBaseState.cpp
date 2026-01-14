@@ -245,11 +245,11 @@ void OptionsBaseState::btnOkClick(Action *)
 		// Confirm any video options changes
 		if (Options::displayWidth != Options::newDisplayWidth ||
 			Options::displayHeight != Options::newDisplayHeight ||
-			Options::oneOpenGL != Options::newOpenGL ||
-			Options::oneNearestScaler != Options::newNearestScaler ||
-			Options::oneLinearScaler != Options::newLinearScaler ||
-			Options::oneAnisotropicScaler != Options::newAnisotropicScaler ||
-			Options::oneOpenGLShader != Options::newOpenGLShader)
+			Options::useOpenGL != Options::newOpenGL ||
+			Options::useNearestScaler != Options::newNearestScaler ||
+			Options::useLinearScaler != Options::newLinearScaler ||
+			Options::useAnisotropicScaler != Options::newAnisotropicScaler ||
+			Options::useOpenGLShader != Options::newOpenGLShader)
 		{
 			_game->pushState(new OptionsConfirmState(_origin));
 		}
