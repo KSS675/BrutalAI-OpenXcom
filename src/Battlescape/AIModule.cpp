@@ -2530,7 +2530,7 @@ void AIModule::projectileAction()
 	{
 		// If we want to check and it's not in range, perhaps we should re-think shooting
 		int distanceSq = _unit->distance3dToPositionSq(_attackAction.target);
-		if (_attackAction.weapon->getRules()->isOutOfRange(distanceSq / 2.75f))
+		if (_attackAction.weapon->getRules()->isOutOfRange(distanceSq))
 		{
 			return;
 		}
@@ -5244,7 +5244,7 @@ float AIModule::brutalScoreFiringMode(BattleAction* action, BattleUnit* target, 
 			accuracy *= action->weapon->getRules()->getNoLOSAccuracyPenalty(_save->getMod()) / 100.0;
 	}
 
-	if (action->type != BA_THROW && action->weapon->getRules()->isOutOfRange(distanceSq / 2.75f))
+	if (action->type != BA_THROW && action->weapon->getRules()->isOutOfRange(distanceSq))
 		accuracy = 0;
 	if (action->type == BA_HIT)
 	{
