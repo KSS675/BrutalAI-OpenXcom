@@ -1741,7 +1741,7 @@ int AIModule::scoreFiringMode(BattleAction *action, BattleUnit *target, bool che
 
 	bool outOfRange = action->type == BA_THROW
 		? weapon->isOutOfThrowRange(distanceSq, _save->getDepth())
-		: weapon->isOutOfRange(distanceSq / 2.75f);
+		: weapon->isOutOfRange(distanceSq);
 
 	if (outOfRange)
 	{
