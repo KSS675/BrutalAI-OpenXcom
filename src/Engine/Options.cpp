@@ -361,10 +361,9 @@ void createControlsOXC()
 void createOptionsAndroid()
 {
 	// SDL2 scaler options
-	_info.push_back(OptionInfo(OPTION_OXC, "useNearestScaler", &useNearestScaler, false));
-	_info.push_back(OptionInfo(OPTION_OXC, "useLinearScaler", &useLinearScaler, true));
-	_info.push_back(OptionInfo(OPTION_OXC, "useAnisotropicScaler", &useAnisotropicScaler, false));
-	_info.push_back(OptionInfo(OPTION_OXC, "useSoftwareRenderer", &useSoftwareRenderer, false));
+	_info.push_back(OptionInfo(OPTION_OXC, "useNearestScaler", &newNearestScaler, false));
+	_info.push_back(OptionInfo(OPTION_OXC, "useLinearScaler", &newLinearScaler, true));
+	_info.push_back(OptionInfo(OPTION_OXC, "useAnisotropicScaler", &newAnisotropicScaler, false));
 
 	// System-specific
 	_info.push_back(OptionInfo(OPTION_OXC, "systemUI", (int*)&systemUI, SYSTEMUI_ALWAYS_SHOWN));
@@ -1564,9 +1563,9 @@ void backupDisplay()
 	Options::newFullscreen = Options::fullscreen;
 	Options::newAllowResize = Options::allowResize;
 	Options::newBorderless = Options::borderless;
-	Options::newNearestScaler = Options::useNearestScaler;
-	Options::newLinearScaler = Options::useLinearScaler;
-	Options::newAnisotropicScaler = Options::useAnisotropicScaler;
+	Options::newNearestScaler = Options::newNearestScaler;
+	Options::newLinearScaler = Options::newLinearScaler;
+	Options::newAnisotropicScaler = Options::newAnisotropicScaler;
 }
 
 /**
@@ -1590,9 +1589,9 @@ void switchDisplay()
 	std::swap(fullscreen, newFullscreen);
 	std::swap(allowResize, newAllowResize);
 	std::swap(borderless, newBorderless);
-	std::swap(useNearestScaler, newNearestScaler);
-	std::swap(useLinearScaler, newLinearScaler);
-	std::swap(useAnisotropicScaler, newAnisotropicScaler);
+	std::swap(newNearestScaler, newNearestScaler);
+	std::swap(newLinearScaler, newLinearScaler);
+	std::swap(newAnisotropicScaler, newAnisotropicScaler);
 }
 
 void setUserFolder(const std::string &userFolder)
