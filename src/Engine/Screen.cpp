@@ -327,15 +327,15 @@ void Screen::resetDisplay(bool resetVideo, bool noShaders)
 		/* FIXME: leak? */
 		Log(LOG_INFO) << "Attempting to set display to " << width << "x" << height << "x" << _bpp << "...";
 		/* Attempt to set scaling */
-		if (Options::useNearestScaler)
+		if (Options::newNearestScaler)
 		{
 			SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
 		}
-		else if (Options::useLinearScaler)
+		else if (Options::newLinearScaler)
 		{
 			SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
 		}
-		else if (Options::useAnisotropicScaler)
+		else if (Options::newAnisotropicScaler)
 		{
 			SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "best");
 		}
@@ -408,7 +408,7 @@ void Screen::resetDisplay(bool resetVideo, bool noShaders)
 
 		if (!_renderer)
 		{
-			if (Options::useSoftwareRenderer)
+			if (Options::newSoftwareRenderer)
 			{
 				_renderer = new SDLRenderer(_window, -1, SDL_RENDERER_SOFTWARE);
 			}
