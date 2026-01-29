@@ -3387,21 +3387,16 @@ bool BattleUnit::addItem(BattleItem *item, const Mod *mod, bool allowSecondClip,
 
 		if (loaded && (getGeoscapeSoldier() == 0 || allowAutoLoadout))
 		{
-			if (getBaseStats()->strength * 0.66 >= weight) // weight is always considered 0 for aliens
+			// C1 - vanilla right-hand main weapon (and OXCE left-hand second main weapon)
+			if (fitItemToInventory(rightHand, item, testMode))
 			{
-				// C1 - vanilla right-hand main weapon (and OXCE left-hand second main weapon)
-				if (fitItemToInventory(rightHand, item, testMode))
-				{
-					placed = true;
-				}
-				bool allowTwoMainWeapons = (getFaction() != FACTION_PLAYER) || _armor->getAllowTwoMainWeapons();
-				if (!placed && allowTwoMainWeapons && fitItemToInventory(leftHand, item, testMode))
-				{
-					placed = true;
-				}
+				placed = true;
 			}
 		}
-		break;
+		if (placed)
+		{
+			break;
+		}
 	case BT_AMMO:
 		{
 			BattleItem *rightWeapon = getRightHandWeapon();
@@ -3443,6 +3438,10 @@ bool BattleUnit::addItem(BattleItem *item, const Mod *mod, bool allowSecondClip,
 			FALLTHROUGH;
 		}
 	default:
+		break;
+	}
+	if (!placed && (rule->getBattleType() != BT_AMMO || keep))
+	{
 		if (rule->getBattleType() == BT_PSIAMP && getFaction() == FACTION_HOSTILE)
 		{
 			// C2 - vanilla left-hand psi-amp for hostiles
@@ -3464,10 +3463,6 @@ bool BattleUnit::addItem(BattleItem *item, const Mod *mod, bool allowSecondClip,
 						if (slot->getType() != INV_GROUND)
 						{
 							placed = fitItemToInventory(slot, item, testMode);
-							if (placed)
-							{
-								break;
-							}
 						}
 					}
 				}
@@ -3491,7 +3486,7 @@ bool BattleUnit::addItem(BattleItem *item, const Mod *mod, bool allowSecondClip,
 						}
 					}
 				}
-				if (!placed && Options::oxceSmartCtrlEquip)
+				if (!placed)
 				{
 					int bestPrimaryCost = INT_MAX;
 					int bestSecondaryCost = INT_MAX; // Used to break ties (e.g. Belt vs Leg)
@@ -3573,16 +3568,11 @@ bool BattleUnit::addItem(BattleItem *item, const Mod *mod, bool allowSecondClip,
 						if (slot->getType() == INV_SLOT)
 						{
 							placed = fitItemToInventory(slot, item, testMode);
-							if (placed)
-							{
-								break;
-							}
 						}
 					}
 				}
 			}
 		}
-		break;
 	}
 
 	item->setXCOMProperty(getFaction() == FACTION_PLAYER && !isSummonedPlayerUnit());
